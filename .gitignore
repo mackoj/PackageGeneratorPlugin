@@ -1,0 +1,12 @@
+*.zip
+.DS_Store
+.netrc
+.swiftpm/config/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+/*.xcodeproj
+/.build
+/Packages
+DerivedData/
+Package_generated.swift
+package-generator-cli.artifactbundle/
+xcuserdata/

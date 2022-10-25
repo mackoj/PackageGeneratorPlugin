@@ -1,0 +1,51 @@
+// swift-tools-version:5.7
+// The swift-tools-version declares the minimum version of Swift required to build this package.
+
+import PackageDescription
+
+let package = Package(
+  name: "SPMPackageGenerator",
+  platforms: [
+    .macOS(.v12),
+  ],
+  products: [
+    .executable(name: "package-generator-cli", targets: ["PackageGeneratorCLI"]),
+    .plugin(name: "PackageGenerator", targets: ["PackageGenerator"]),
+  ],
+  dependencies: [
+    .package(url: "https://github.com/JohnSundell/Files", from: "4.2.0"),
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.1.4"),
+    .package(url: "https://github.com/apple/swift-syntax", .exact("0.50500.0")), // 0.50700.1
+  ],
+  targets: [
+    .plugin(
+      name: "PackageGenerator",
+      capability: .command(
+        intent: .custom(
+          verb: "package-generator",
+          description: "Generate the Package.swift based on spmgen.json"
+        ),
+        permissions: [
+          .writeToPackageDirectory(reason: "This plug-in need to update the Package.swift in the source directory folder."),
+        ]
+      )//,
+//      dependencies: [
+//        .target(name: "lib_InternalSwiftSyntaxParser")
+//      ]
+    ),
+    .binaryTarget(
+      name: "lib_InternalSwiftSyntaxParser",
+      url: "https://github.com/keith/StaticInternalSwiftSyntaxParser/releases/download/5.5.2/lib_InternalSwiftSyntaxParser.xcframework.zip",
+      checksum: "96bbc9ab4679953eac9ee46778b498cb559b8a7d9ecc658e54d6679acfbb34b8"
+    ),
+    .executableTarget(
+      name: "PackageGeneratorCLI",
+      dependencies: [
+        "Files",
+        "lib_InternalSwiftSyntaxParser",
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ]
+    ),
+  ]
+)
