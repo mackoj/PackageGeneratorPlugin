@@ -41,10 +41,10 @@ struct PackageGenerator {
     var cliArguments: [String] = [
       "--output-file-url",
       parsedPackageFileURL.path,
-      "--package-directory",
-      packageDirectory.path,
       "--input-file-url",
       packagesFileURL.path,
+      "--package-directory",
+      packageDirectory.path,
     ]
     
     if config.verbose {
@@ -62,7 +62,7 @@ struct PackageGenerator {
     )
     
     if FileManager.default.fileExists(atPath: parsedPackageFileURL.path) == false {
-      fatalError(.warning, "No update to Package.swift needed")
+      Diagnostics.emit(.warning, "No update to Package.swift needed")
     }
     
     // Load ParsedPackage
@@ -70,13 +70,20 @@ struct PackageGenerator {
     do {
       let data = try Data(contentsOf: parsedPackageFileURL)
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
-      
-      try FileManager.default.removeItem(at: parsedPackageFileURL)
-      try FileManager.default.removeItem(at: packagesFileURL)
     } catch {
       fatalError(.error, "Failed to read at \(parsedPackageFileURL.path)")
       fatalError(.error, "Failed to JSONDecode at \(parsedPackageFileURL.path)")
+    }
+    
+    do {
+      try FileManager.default.removeItem(at: parsedPackageFileURL)
+    } catch {
       Diagnostics.emit(.warning, "Failed to removeItem at \(parsedPackageFileURL.path)")
+    }
+    
+    do {
+      try FileManager.default.removeItem(at: packagesFileURL)
+    } catch {
       Diagnostics.emit(.warning, "Failed to removeItem at \(packagesFileURL.path)")
     }
     print("\(parsedPackages.count) packages found")
