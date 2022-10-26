@@ -26,7 +26,7 @@ struct PackageGenerator {
     /// Generate ParsedPackage
     let parsedPackageFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
     let packagesFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
-
+    
     if config.verbose {
       print("packagesFileURL:", packagesFileURL.path)
       print("parsedPackageFileURL:", parsedPackageFileURL.path)
@@ -54,7 +54,7 @@ struct PackageGenerator {
     if config.verbose {
       print("package-generator-cli", cliArguments.joined(separator: " "))
     }
-
+    
     runCli(
       context: context,
       toolName: "package-generator-cli",
@@ -104,15 +104,15 @@ struct PackageGenerator {
       }
       return parsedPackage
     }
-
+    
     // UpdateIsLeaf
     if config.leafInfo {
       if config.verbose { print("Update leaf status in Packages...") }
       parsedPackages = updateIsLeaf(config, parsedPackages)
     }
-
+    
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
-
+    
     // Write Package.swift
     let outputFileName = config.dryRun ? "Package_generated.swift" : "Package.swift"
     if config.verbose { print("Preparing \(outputFileName)...") }
@@ -293,7 +293,8 @@ struct PackageGenerator {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
       }
       let name = configuration.mappers.targets[parsedPackage.name, default: parsedPackage.name]
-      last = ".library(name: \"" + name + "\", targets: [\"" + name + "\"])"
+      let spaces = String(repeating: " ", count: configuration.spaces)
+      last = "\(spaces).library(name: \"" + name + "\", targets: [\"" + name + "\"])"
     }
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
@@ -321,22 +322,23 @@ struct PackageGenerator {
   }
   
   private static func fakeTargetToSwiftCode(_ fakeTarget: ParsedPackage, _ configuration: PackageGeneratorConfiguration) -> String {
+    let spaces = String(repeating: " ", count: configuration.spaces)
     let localDependencies = fakeTarget.dependencies
     var dependencies = ""
     if localDependencies.isEmpty == false {
-      dependencies = "\n  dependencies: [\n" + localDependencies.map{ "    \(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n  ],"
+      dependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
     }
     var resource = ""
     if let resourcesPath = fakeTarget.resources {
-      resource = ",\n  resources: [.process(\"" + resourcesPath + "/\")]"
+      resource = ",\n\(spaces)\(spaces)resources: [.process(\"" + resourcesPath + "/\")]"
     }
     
     let isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
     return """
-   .target(
-   name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
-   path: "\(fakeTarget.path)"\(resource)
-   )
+   \(spaces).target(
+   \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
+   \(spaces)\(spaces)path: "\(fakeTarget.path)"\(resource)
+   \(spaces))
    """
   }
   

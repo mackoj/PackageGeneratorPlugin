@@ -8,26 +8,27 @@ public struct PackageGeneratorConfiguration: Codable {
   public var exclusions: Exclusions
   public var headerFileURL: FileURL?
   public var packageDirectories: [FileURL]
-  public var checkIfThereIsCommitToDo: Bool
+  public var spaces: Int
   
+
   public init(
     headerFileURL: FileURL? = nil,
     packageDirectories: [FileURL] = [],
-    checkIfThereIsCommitToDo: Bool = true,
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions(),
     verbose: Bool = false,
     dryRun: Bool = true,
-    leafInfo: Bool = false
+    leafInfo: Bool = false,
+    spaces: Int = 2
   ) {
     self.mappers = mappers
     self.exclusions = exclusions
     self.headerFileURL = headerFileURL
     self.packageDirectories = packageDirectories
-    self.checkIfThereIsCommitToDo = checkIfThereIsCommitToDo
     self.verbose = verbose
     self.dryRun = dryRun
     self.leafInfo = leafInfo
+    self.spaces = spaces
   }
   
   // MARK: - Exclusions
