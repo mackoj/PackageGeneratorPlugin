@@ -239,6 +239,9 @@ struct PackageGenerator {
     var data: Data
     do {
       data = try Data(contentsOf: configurationFileURL)
+      if data.isEmpty {
+        fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)\n\(error.localizedDescription)")
+      }
     } catch {
       fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)\n\(error.localizedDescription)")
     }
