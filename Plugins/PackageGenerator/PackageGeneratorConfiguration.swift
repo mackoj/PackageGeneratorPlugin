@@ -1,16 +1,21 @@
 import Foundation
 
+extension String {
+  var fileURL: FileURL {
+    URL(fileURLWithPath: self)
+  }
+}
+
 public struct PackageGeneratorConfiguration: Codable {
   public var mappers: Mappers
   public var verbose: Bool
   public var dryRun: Bool
   public var leafInfo: Bool
   public var exclusions: Exclusions
-  public var headerFileURL: FileURL?
-  public var packageDirectories: [FileURL]
+  public var headerFileURL: String?
+  public var packageDirectories: [String]
   public var spaces: Int
   
-
   public init(
     headerFileURL: FileURL? = nil,
     packageDirectories: [FileURL] = [],

@@ -142,13 +142,13 @@ struct PackageGenerator {
     guard let headerFileURL = config.headerFileURL else {
       fatalError(.error, "No header fileURL configured")
     }
-    if FileManager.default.fileExists(atPath: headerFileURL.path) == false {
-      fatalError(.error, "No header file found at \(headerFileURL.path)")
+    if FileManager.default.fileExists(atPath: headerFileURL.fileURL.path) == false {
+      fatalError(.error, "No header file found at \(headerFileURL.fileURL.path)")
     }
     
     var headerData: Data
     do {
-      headerData = try Data(contentsOf: headerFileURL)
+      headerData = try Data(contentsOf: headerFileURL.fileURL)
     } catch {
       fatalError(.error, "Failed to load header data")
     }
@@ -255,7 +255,7 @@ struct PackageGenerator {
   }
   
   private static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL) {
-    if config.headerFileURL == nil || config.headerFileURL?.path.isEmpty == true {
+    if config.headerFileURL == nil || config.headerFileURL?.fileURL.path.isEmpty == true {
       fatalError(.error, "headerFileURL in \(configurationFileURL.path) should not be empty")
     }
     if config.packageDirectories.isEmpty {
