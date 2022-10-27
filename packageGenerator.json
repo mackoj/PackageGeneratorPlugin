@@ -1,8 +1,8 @@
 {
   "leafInfo": true,
   "verbose": true,
-  "checkIfThereIsCommitToDo": true,
   "dryRun": true,
+  "spaces": 2,
   "mappers": {
     "targets": {
       "Foundation": "FoundationHelpers",

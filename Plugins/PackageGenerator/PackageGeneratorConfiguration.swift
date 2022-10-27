@@ -1,33 +1,39 @@
 import Foundation
 
+extension String {
+  var fileURL: FileURL {
+    URL(fileURLWithPath: self)
+  }
+}
+
 public struct PackageGeneratorConfiguration: Codable {
   public var mappers: Mappers
   public var verbose: Bool
   public var dryRun: Bool
   public var leafInfo: Bool
   public var exclusions: Exclusions
-  public var headerFileURL: FileURL?
-  public var packageDirectories: [FileURL]
-  public var checkIfThereIsCommitToDo: Bool
+  public var headerFileURL: String?
+  public var packageDirectories: [String]
+  public var spaces: Int
   
   public init(
-    headerFileURL: FileURL? = nil,
-    packageDirectories: [FileURL] = [],
-    checkIfThereIsCommitToDo: Bool = true,
+    headerFileURL: String? = nil,
+    packageDirectories: [String] = [],
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions(),
     verbose: Bool = false,
     dryRun: Bool = true,
-    leafInfo: Bool = false
+    leafInfo: Bool = false,
+    spaces: Int = 2
   ) {
     self.mappers = mappers
     self.exclusions = exclusions
     self.headerFileURL = headerFileURL
     self.packageDirectories = packageDirectories
-    self.checkIfThereIsCommitToDo = checkIfThereIsCommitToDo
     self.verbose = verbose
     self.dryRun = dryRun
     self.leafInfo = leafInfo
+    self.spaces = spaces
   }
   
   // MARK: - Exclusions
