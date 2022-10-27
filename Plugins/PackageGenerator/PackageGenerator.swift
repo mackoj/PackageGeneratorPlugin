@@ -240,10 +240,10 @@ struct PackageGenerator {
     do {
       data = try Data(contentsOf: configurationFileURL)
       if data.isEmpty {
-        fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)\n\(error.localizedDescription)")
+        fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)")
       }
     } catch {
-      fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)\n\(error.localizedDescription)")
+      fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)\n\(dump(error))")
     }
     var config: PackageGeneratorConfiguration
     do {
