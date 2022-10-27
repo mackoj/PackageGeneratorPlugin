@@ -250,7 +250,7 @@ struct PackageGenerator {
       config = try JSONDecoder().decode(PackageGeneratorConfiguration.self, from: data)
     } catch {
       Diagnostics.emit(.error, "packageDirectories might be empty")
-      fatalError(.error, "Failed to decode JSON file \(configurationFileURL.path)\n\(error.localizedDescription)")
+      fatalError(.error, "Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
     }
     
     if config.verbose { print(config) }
