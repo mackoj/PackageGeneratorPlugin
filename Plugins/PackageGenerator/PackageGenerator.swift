@@ -165,7 +165,6 @@ struct PackageGenerator {
     if config.verbose { print("Generating Targets...") }
     generateTargets(parsedPackages, outputFileHandle, config)
     outputFileHandle.closeFile()
-    print("Finished")
   }
   
   // MARK: - Private

@@ -4,7 +4,8 @@ import PackagePlugin
 func runCli(
   context: PackagePlugin.PluginContext,
   toolName: String,
-  arguments: [String]
+  arguments: [String],
+  verbose: Bool
 ) {
   var tool: PluginContext.Tool!
   do {
@@ -12,7 +13,9 @@ func runCli(
   } catch {
     fatalError(.error, "Failed to find tool \(toolName).")
   }
-  print("toolName:", tool.path.string)
+  if verbose {    
+    print("toolName:", tool.path.string)
+  }
   let toolURL = FileURL(fileURLWithPath: tool.path.string)
   
   var processArguments: [String] = []
