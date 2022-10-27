@@ -17,8 +17,8 @@ public struct PackageGeneratorConfiguration: Codable {
   public var spaces: Int
   
   public init(
-    headerFileURL: FileURL? = nil,
-    packageDirectories: [FileURL] = [],
+    headerFileURL: String? = nil,
+    packageDirectories: [String] = [],
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions(),
     verbose: Bool = false,
