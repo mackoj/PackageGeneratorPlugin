@@ -72,8 +72,7 @@ struct PackageGenerator {
       let data = try Data(contentsOf: parsedPackageFileURL)
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
     } catch {
-      fatalError(.error, "Failed to read at \(parsedPackageFileURL.path)")
-      fatalError(.error, "Failed to JSONDecode at \(parsedPackageFileURL.path)")
+      fatalError(.error, "Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
     }
     
     do {
@@ -325,7 +324,7 @@ struct PackageGenerator {
     outputFileHandle.write("package.targets.append(contentsOf: [\n".data(using: .utf8)!)
     
     var last: String = ""
-    var lastCommonPath: String = ""
+//    var lastCommonPath: String = ""
     for parsedPackage in parsedPackages {
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
