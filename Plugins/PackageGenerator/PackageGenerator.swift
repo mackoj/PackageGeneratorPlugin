@@ -58,7 +58,8 @@ struct PackageGenerator {
     runCli(
       context: context,
       toolName: "package-generator-cli",
-      arguments: cliArguments
+      arguments: cliArguments,
+      verbose: config.verbose
     )
     
     if FileManager.default.fileExists(atPath: parsedPackageFileURL.path) == false {
@@ -109,6 +110,7 @@ struct PackageGenerator {
     if config.leafInfo {
       if config.verbose { print("Update leaf status in Packages...") }
       parsedPackages = updateIsLeaf(config, parsedPackages)
+      updateIsUnsused(config, parsedPackages)
     }
     
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
@@ -267,6 +269,22 @@ struct PackageGenerator {
   }
   
   // MARK: ParsedPackage Processing
+  private static func updateIsUnsused(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) {
+    let names = Set<String>(inputParsedPackages.map { $0.name })
+    for name in names {
+      var isUsed = false
+      for pkg in inputParsedPackages {
+        if pkg.dependencies.contains(name) {
+          isUsed = true
+          break
+        }
+      }
+      if isUsed == false {
+        print("📦 \(name) is not used")
+      }
+    }
+  }
+  
   private static func updateIsLeaf(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) -> [ParsedPackage] {
     let names = Set<String>(inputParsedPackages.map { $0.name })
     var parsedPackages = inputParsedPackages
