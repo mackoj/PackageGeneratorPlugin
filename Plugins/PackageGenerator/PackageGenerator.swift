@@ -109,9 +109,10 @@ struct PackageGenerator {
     if config.leafInfo {
       if config.verbose { print("Update leaf status in Packages...") }
       parsedPackages = updateIsLeaf(config, parsedPackages)
-      updateIsUnsused(config, parsedPackages)
     }
-    
+
+    updateIsUnsused(config, parsedPackages)
+
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
     
     // Write Package.swift
@@ -271,15 +272,14 @@ struct PackageGenerator {
   private static func updateIsUnsused(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) {
     let names = Set<String>(inputParsedPackages.map { $0.name })
     for name in names {
-      var isUsed = false
+      var usedCount = 0
       for pkg in inputParsedPackages {
         if pkg.dependencies.contains(name) {
-          isUsed = true
-          break
+          usedCount += 1
         }
       }
-      if isUsed == false {
-        print("📦 \(name) is not used")
+      if usedCount <= configuration.unusedThreshold {
+        print("📦 \(name) is used \(usedCount) times")
       }
     }
   }

@@ -15,7 +15,8 @@ public struct PackageGeneratorConfiguration: Codable {
   public var headerFileURL: String?
   public var packageDirectories: [String]
   public var spaces: Int
-  
+  public var unusedThreshold: Int
+
   public init(
     headerFileURL: String? = nil,
     packageDirectories: [String] = [],
@@ -24,7 +25,8 @@ public struct PackageGeneratorConfiguration: Codable {
     verbose: Bool = false,
     dryRun: Bool = true,
     leafInfo: Bool = false,
-    spaces: Int = 2
+    spaces: Int = 2,
+    unusedThreshold: Int = 1
   ) {
     self.mappers = mappers
     self.exclusions = exclusions
@@ -34,6 +36,7 @@ public struct PackageGeneratorConfiguration: Codable {
     self.dryRun = dryRun
     self.leafInfo = leafInfo
     self.spaces = spaces
+    self.unusedThreshold = unusedThreshold
   }
   
   // MARK: - Exclusions
