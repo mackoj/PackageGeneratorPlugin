@@ -58,7 +58,8 @@ struct PackageGenerator {
     runCli(
       context: context,
       toolName: "package-generator-cli",
-      arguments: cliArguments
+      arguments: cliArguments,
+      verbose: config.verbose
     )
     
     if FileManager.default.fileExists(atPath: parsedPackageFileURL.path) == false {
@@ -71,8 +72,7 @@ struct PackageGenerator {
       let data = try Data(contentsOf: parsedPackageFileURL)
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
     } catch {
-      fatalError(.error, "Failed to read at \(parsedPackageFileURL.path)")
-      fatalError(.error, "Failed to JSONDecode at \(parsedPackageFileURL.path)")
+      fatalError(.error, "Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
     }
     
     do {
@@ -110,7 +110,9 @@ struct PackageGenerator {
       if config.verbose { print("Update leaf status in Packages...") }
       parsedPackages = updateIsLeaf(config, parsedPackages)
     }
-    
+
+    updateIsUnsused(config, parsedPackages)
+
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
     
     // Write Package.swift
@@ -267,6 +269,21 @@ struct PackageGenerator {
   }
   
   // MARK: ParsedPackage Processing
+  private static func updateIsUnsused(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) {
+    let names = Set<String>(inputParsedPackages.map { $0.name })
+    for name in names {
+      var usedCount = 0
+      for pkg in inputParsedPackages {
+        if pkg.dependencies.contains(name) {
+          usedCount += 1
+        }
+      }
+      if usedCount <= configuration.unusedThreshold {
+        print("📦 \(name) is used \(usedCount) times")
+      }
+    }
+  }
+  
   private static func updateIsLeaf(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) -> [ParsedPackage] {
     let names = Set<String>(inputParsedPackages.map { $0.name })
     var parsedPackages = inputParsedPackages
@@ -307,7 +324,7 @@ struct PackageGenerator {
     outputFileHandle.write("package.targets.append(contentsOf: [\n".data(using: .utf8)!)
     
     var last: String = ""
-    var lastCommonPath: String = ""
+//    var lastCommonPath: String = ""
     for parsedPackage in parsedPackages {
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)

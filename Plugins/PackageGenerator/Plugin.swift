@@ -5,8 +5,7 @@ import PackagePlugin
 struct PackageGeneratorPlugin: CommandPlugin {
   func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
     PackageGenerator.generate(context, arguments)
-    
-    Diagnostics.emit(.remark, "Finished")
+    Diagnostics.emit(.remark, "PackageGenerator has finished")
   }
 }
 
