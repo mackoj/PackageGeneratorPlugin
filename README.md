@@ -2,6 +2,8 @@
 
 Package Generator is a Swift Package Manager Plugin for simply updating your `Package.swift` file in a consistent and understandable way. This is great tool for project that are heavely modularize or use TCA thus rely on a clean and updated `Package.swift`.
 
+⚠️ This only support Apple Silicon computer at the moment.
+
 * [How does it works?](#how-does-it-works)
 * [Installation](#installation)
 * [Basic usage](#basic-usage)
