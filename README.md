@@ -81,3 +81,60 @@ This file contain theses keys:
 ```
 
 If a new configuration filename is used as explain in #basic-usage step 1. It will be save so that you will not be requeried to input the configuration fileName at each launch. 
+
+
+### Header File
+
+The content of `headerFileURL` from the configuration will be added to the top of the generated `Package.swift`
+I advise to add all required `dependencies` and a least test targets, executable targets.
+If a target require parameters other than(name, dependencies, path) it should be in there too since other parameter are not yet supported.
+
+```swift
+// swift-tools-version:5.7
+// The swift-tools-version declares the minimum version of Swift required to build this package.
+
+import Foundation
+import PackageDescription
+
+var package = Package(
+  name: "project",
+  defaultLocalization: "en",
+  platforms: [
+    .macOS(.v12),
+    .iOS("15.0")
+  ]
+)
+
+package.dependencies.append(contentsOf: [
+  .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.3.0"),
+  .package(url: "https://github.com/mackoj/SchemeGeneratorPlugin.git", from: "0.5.5"),
+  .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.45.0"),
+])
+
+package.products.append(contentsOf: [
+  .executable(name: "server", targets: ["server"]),
+  .executable(name: "parse", targets: ["ParserRunner"]),
+])
+
+package.targets.append(contentsOf: [
+  // MARK: -
+  // MARK: Test Targets
+  .testTarget(
+    name: "MyProjectTests",
+    dependencies: [
+      "MyProject",
+    ]
+  ),
+  
+  // MARK: -
+  // MARK: Executables
+  .executableTarget(
+    name: "server",
+    path: "Sources/Backend/Sources/Run"
+  ),
+  .executableTarget(
+    name: "ParserRunner",
+    path: "Sources/App/Parsers/Runner"
+  ),
+])
+```
