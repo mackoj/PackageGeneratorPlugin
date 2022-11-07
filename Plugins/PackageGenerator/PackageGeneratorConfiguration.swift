@@ -6,27 +6,30 @@ extension String {
   }
 }
 
-public struct PackageGeneratorConfiguration: Codable {
-  public var mappers: Mappers
-  public var verbose: Bool
-  public var dryRun: Bool
-  public var leafInfo: Bool
-  public var exclusions: Exclusions
-  public var headerFileURL: String?
-  public var packageDirectories: [String]
-  public var spaces: Int
-  public var unusedThreshold: Int
 
-  public init(
+struct PackageGeneratorConfiguration: Codable {
+  var mappers: Mappers
+  var verbose: Bool
+  var dryRun: Bool
+  var leafInfo: Bool?
+  var exclusions: Exclusions
+  var headerFileURL: String?
+  var packageDirectories: [String]
+  var spaces: Int
+  var unusedThreshold: Int?
+  var pragmaMark: Bool
+
+  init(
     headerFileURL: String? = nil,
     packageDirectories: [String] = [],
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions(),
     verbose: Bool = false,
     dryRun: Bool = true,
-    leafInfo: Bool = false,
+    leafInfo: Bool? = nil,
     spaces: Int = 2,
-    unusedThreshold: Int = 1
+    unusedThreshold: Int? = nil,
+    pragmaMark: Bool = false
   ) {
     self.mappers = mappers
     self.exclusions = exclusions
@@ -37,16 +40,17 @@ public struct PackageGeneratorConfiguration: Codable {
     self.leafInfo = leafInfo
     self.spaces = spaces
     self.unusedThreshold = unusedThreshold
+    self.pragmaMark = pragmaMark
   }
   
   // MARK: - Exclusions
-  public struct Exclusions: Codable {
-    public var imports: [String]
-    public var targets: [String]
-    public var apple: [String]
+  struct Exclusions: Codable {
+    var imports: [String]
+    var targets: [String]
+    var apple: [String]
     
     
-    public init(apple: [String] = [], imports: [String] = [], targets: [String] = []) {
+    init(apple: [String] = appleDefaultSDKs, imports: [String] = [], targets: [String] = []) {
       self.imports = imports
       self.targets = targets
       self.apple = apple
@@ -54,13 +58,15 @@ public struct PackageGeneratorConfiguration: Codable {
   }
   
   // MARK: - Mappers
-  public struct Mappers: Codable {
-    public var imports: [String: String]
-    public var targets: [String: String]
+  struct Mappers: Codable {
+    var imports: [String: String]
+    var targets: [String: String]
     
-    public init(imports: [String: String] = [:], targets: [String: String] = [:]) {
+    init(imports: [String: String] = [:], targets: [String: String] = [:]) {
       self.imports = imports
       self.targets = targets
     }
   }
 }
+
+let defaultUnusedThreshold = 1

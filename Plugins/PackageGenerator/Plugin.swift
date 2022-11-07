@@ -9,7 +9,7 @@ struct PackageGeneratorPlugin: CommandPlugin {
   }
 }
 
-public func fatalError(_ severity: PackagePlugin.Diagnostics.Severity, _ description: String, file: StaticString = #file, line: UInt = #line) -> Never {
+func fatalError(_ severity: PackagePlugin.Diagnostics.Severity, _ description: String, file: StaticString = #file, line: UInt = #line) -> Never {
   Diagnostics.emit(severity, description)
   fatalError(file: file, line: line)
 }

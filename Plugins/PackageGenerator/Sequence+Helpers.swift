@@ -8,7 +8,7 @@ extension Sequence where Iterator.Element: Hashable {
 }
 
 extension Sequence {
-  @inlinable public func sorted(with: [Self.Element]) -> [Self.Element]
+  @inlinable func sorted(with: [Self.Element]) -> [Self.Element]
   where Self.Element: Equatable {
     var res: [Self.Element?] = Array(repeating: nil, count: with.count)
     for (index, element) in with.enumerated() {
@@ -21,13 +21,13 @@ extension Sequence {
 }
 
 extension Sequence {
-  public func sorted<T: Comparable>(by keyPath: KeyPath<Element, T>, order: @escaping (T, T) -> Bool) -> [Element] {
+  func sorted<T: Comparable>(by keyPath: KeyPath<Element, T>, order: @escaping (T, T) -> Bool) -> [Element] {
     return sorted { a, b in
       return order(a[keyPath: keyPath], b[keyPath: keyPath])
     }
   }
   
-  public func sorted<T: Comparable>(by keyPath: KeyPath<Element, T?>, order: @escaping (T?, T?) -> Bool) -> [Element] {
+  func sorted<T: Comparable>(by keyPath: KeyPath<Element, T?>, order: @escaping (T?, T?) -> Bool) -> [Element] {
     return sorted { a, b in
       return order(a[keyPath: keyPath], b[keyPath: keyPath])
     }
