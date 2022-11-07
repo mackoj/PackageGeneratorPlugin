@@ -10,3 +10,6 @@ DerivedData/
 Package_generated.swift
 package-generator-cli.artifactbundle/
 xcuserdata/
+header.txt
+packageGenerator.json
+Package_generated.swift
