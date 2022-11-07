@@ -50,6 +50,7 @@ This file contains these keys:
 - `exclusions.apple`: An array of string that represents all Apple SDK that should not be add as dependencies to a target
 - `exclusions.imports`: An array of string that represents all other SDK that should not be added as dependencies to a target
 - `exclusions.targets`: An array of string that represent all targets that should not be added in the generated `Package.swift`
+- `targetsParameters`: An dictionary that represent what custom parameter to add to a target
 
 ```json
 {
@@ -60,6 +61,10 @@ This file contains these keys:
     "Sources/App/Helpers/Foundation"
   ],
   "headerFileURL": "header.swift",
+  "targetsParameters": {
+    "Analytics": ["exclude: [\"__Snapshots__\"]", "resources: [.copy(\"Fonts/\")]"],
+    "target2": ["resources: [.copy(\"Dictionaries/\")]"]
+  },
   "verbose": false,
   "pragmaMark": false,
   "spaces": 2,

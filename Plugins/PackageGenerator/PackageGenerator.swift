@@ -115,6 +115,17 @@ struct PackageGenerator {
       updateIsUnsused(config, parsedPackages)
     }
     
+    if let targetNames = config.targetsParameters?.keys, targetNames.isEmpty == false {
+      let tNames = Set(targetNames)
+      let parsedPackagesNames = parsedPackages.map(\.name)
+      let toRemove = tNames.subtracting(parsedPackagesNames)
+      if toRemove.isEmpty == false {
+        for targetToRemove in toRemove {
+          Diagnostics.warning("🗑️ Please consider removing \"\(targetToRemove)\" from targetsParameters configuration because this target is not found")
+        }
+      }
+    }
+
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
     
     // Write Package.swift
@@ -354,9 +365,10 @@ struct PackageGenerator {
     if localDependencies.isEmpty == false {
       dependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
     }
-    var resource = ""
-    if let resourcesPath = fakeTarget.resources {
-      resource = ",\n\(spaces)\(spaces)resources: [.process(\"" + resourcesPath + "/\")]"
+    
+    var otherParameters = ""
+    if let targetParameters = configuration.targetsParameters?[fakeTarget.name], targetParameters.isEmpty == false {
+      otherParameters = ",\n" + targetParameters.map { "\(spaces)\(spaces)\($0)" } .joined(separator: ",\n")
     }
     
     var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
@@ -364,7 +376,7 @@ struct PackageGenerator {
     return """
    \(spaces).target(
    \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
-   \(spaces)\(spaces)path: "\(fakeTarget.path)"\(resource)
+   \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
    \(spaces))
    """
   }
