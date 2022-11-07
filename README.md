@@ -9,9 +9,9 @@ Package Generator is a Swift Package Manager Plugin for simply updating your `Pa
 
 ## How does it works?
 
-Package Generator go to all folder set in the configuration then read all swift files in order to look at all the imports to create a target to add to the Package.swift
+Package Generator go to all folder set in the configuration then read all swift files in order to look at all the imports to create a target to add to the Package.swift.
 
-https://github.com/mackoj/PackageGeneratorCLI
+The code analysing part is made using [swift-syntax](https://github.com/apple/swift-syntax.git) since I did'nt find a way to link it to the plugin I have to package it in a [CLI](https://github.com/mackoj/PackageGeneratorCLI) that is use to do the parsing part.
 
 ## Installation
 
