@@ -359,7 +359,8 @@ struct PackageGenerator {
       resource = ",\n\(spaces)\(spaces)resources: [.process(\"" + resourcesPath + "/\")]"
     }
     
-    let isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
+    var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
+    if configuration.leafInfo != true { isLeaf = "" }
     return """
    \(spaces).target(
    \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
