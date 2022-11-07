@@ -92,8 +92,8 @@ If a new configuration filename is used as explained in #basic-usage step 1. It 
 
 ### Header File
 
-The content of `headerFileURL` from the configuration will be added to the top of the generated `Package.swift`
-I advise adding all required `dependencies` and a least test targets, executable targets.
+The content of `headerFileURL` from the configuration will be added to the top of the generated `Package.swift`.
+I advise adding all required `dependencies` and `testTarget`s, `systemLibrary`s, `executableTarget`s and `binaryTarget`s.
 If a target requires parameters other than(name, dependencies, and path) it should be in there too since other parameters are not yet supported.
 
 ```swift
