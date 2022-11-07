@@ -93,8 +93,10 @@ If a new configuration filename is used as explained in #basic-usage step 1. It 
 ### Header File
 
 The content of `headerFileURL` from the configuration will be added to the top of the generated `Package.swift`.
+
 I advise adding all required `dependencies` and `testTarget`s, `systemLibrary`s, `executableTarget`s and `binaryTarget`s.
-If a target requires parameters other than(name, dependencies, and path) it should be in there too since other parameters are not yet supported.
+
+If a target requires parameters other than(name, dependencies, and path) it should be in there too since other parameters are not yet supported(https://github.com/mackoj/PackageGeneratorPlugin/issues/6).
 
 ```swift
 // swift-tools-version:5.7
