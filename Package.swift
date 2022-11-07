@@ -10,6 +10,7 @@ let package = Package(
   ],
   products: [
     .plugin(name: "PackageGenerator", targets: ["PackageGenerator"]),
+    .library(name: "PackageGeneratorLib", targets: ["PackageGeneratorLib"]),
   ],
   targets: [
     .binaryTarget(
@@ -32,5 +33,14 @@ let package = Package(
         .target(name: "package-generator-cli")
       ]
     ),
+    .target(
+      name: "PackageGeneratorLib"
+    ),
+    .testTarget(
+      name: "PackageGeneratorTests",
+      dependencies: [
+        "PackageGeneratorLib"
+      ]
+    )
   ]
 )

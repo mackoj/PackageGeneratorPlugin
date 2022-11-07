@@ -1,11 +1,10 @@
 import Foundation
-import PackagePlugin
 
 struct PackageGenerator {
   
-  static func generate(_ context: PackagePlugin.PluginContext, _ arguments: [String]) {
-    let packageDirectory = FileURL(fileURLWithPath: context.package.directory.string)
-    let packageTempFolder = FileURL(fileURLWithPath: context.pluginWorkDirectory.string)
+  static func generate(_ context: Context, _ arguments: [String]) {
+    let packageDirectory = context.packageDirectory
+    let packageTempFolder = context.packageTempFolder
     
     /// Load Tool Configuration
     let toolConfigFileURL: FileURL = packageTempFolder.appendingPathComponent("config.json")
@@ -22,7 +21,8 @@ struct PackageGenerator {
     validateConfiguration(config, configurationFileURL)
     
     if config.verbose { print(toolConfig) }
-    
+    if config.verbose { print(context) }
+
     /// Generate ParsedPackage
     let parsedPackageFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
     let packagesFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
@@ -35,7 +35,7 @@ struct PackageGenerator {
       let packageDirectoriesData = try JSONEncoder().encode(config.packageDirectories)
       try packageDirectoriesData.write(to: packagesFileURL, options: [.atomic])
     } catch {
-      fatalError(.error, "Failed to share data with the cli.")
+      fatalErrorWithDiagnostics("Failed to share data with the cli.")
     }
     
     var cliArguments: [String] = [
@@ -57,13 +57,12 @@ struct PackageGenerator {
     
     runCli(
       context: context,
-      toolName: "package-generator-cli",
       arguments: cliArguments,
       verbose: config.verbose
     )
     
     if FileManager.default.fileExists(atPath: parsedPackageFileURL.path) == false {
-      Diagnostics.emit(.warning, "No update to Package.swift needed")
+      printDiagnostics(.warning, "No update to Package.swift needed")
     }
     
     // Load ParsedPackage
@@ -72,19 +71,19 @@ struct PackageGenerator {
       let data = try Data(contentsOf: parsedPackageFileURL)
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
     } catch {
-      fatalError(.error, "Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
+      fatalErrorWithDiagnostics("Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
     }
     
     do {
       try FileManager.default.removeItem(at: parsedPackageFileURL)
     } catch {
-      Diagnostics.emit(.warning, "Failed to removeItem at \(parsedPackageFileURL.path)")
+      printDiagnostics(.warning, "Failed to removeItem at \(parsedPackageFileURL.path)")
     }
     
     do {
       try FileManager.default.removeItem(at: packagesFileURL)
     } catch {
-      Diagnostics.emit(.warning, "Failed to removeItem at \(packagesFileURL.path)")
+      printDiagnostics(.warning, "Failed to removeItem at \(packagesFileURL.path)")
     }
     print("\(parsedPackages.count) packages found")
     
@@ -100,7 +99,7 @@ struct PackageGenerator {
       if config.exclusions.targets.contains(parsedPackage.name) == false {
         parsedPackages.append(parsedPackage)
       } else {
-        Diagnostics.emit(.warning, "❌ Rejecting: \(parsedPackage)")
+        printDiagnostics(.warning, "❌ Rejecting: \(parsedPackage)")
       }
       return parsedPackage
     }
@@ -121,7 +120,7 @@ struct PackageGenerator {
       let toRemove = tNames.subtracting(parsedPackagesNames)
       if toRemove.isEmpty == false {
         for targetToRemove in toRemove {
-          Diagnostics.warning("🗑️ Please consider removing \"\(targetToRemove)\" from targetsParameters configuration because this target is not found")
+          printDiagnostics(.warning, "🗑️ Please consider removing \"\(targetToRemove)\" from targetsParameters configuration because this target is not found")
         }
       }
     }
@@ -136,7 +135,7 @@ struct PackageGenerator {
       do {
         try FileManager.default.removeItem(at: outputURL)
       } catch {
-        fatalError(.error, "Failed to remove \(outputURL.path)")
+        fatalErrorWithDiagnostics("Failed to remove \(outputURL.path)")
       }
       
     }
@@ -152,20 +151,20 @@ struct PackageGenerator {
     do {
       outputFileHandle = try FileHandle(forWritingTo: outputURL)
     } catch {
-      fatalError(.error, "Failed to create FileHandle for \(outputURL.path)")
+      fatalErrorWithDiagnostics("Failed to create FileHandle for \(outputURL.path)")
     }
     guard let headerFileURL = config.headerFileURL else {
-      fatalError(.error, "No header fileURL configured")
+      fatalErrorWithDiagnostics("No header fileURL configured")
     }
     if FileManager.default.fileExists(atPath: headerFileURL.fileURL.path) == false {
-      fatalError(.error, "No header file found at \(headerFileURL.fileURL.path)")
+      fatalErrorWithDiagnostics("No header file found at \(headerFileURL.fileURL.path)")
     }
     
     var headerData: Data
     do {
       headerData = try Data(contentsOf: headerFileURL.fileURL)
     } catch {
-      fatalError(.error, "Failed to load header data")
+      fatalErrorWithDiagnostics("Failed to load header data")
     }
     
     outputFileHandle.write(headerData)
@@ -192,7 +191,7 @@ struct PackageGenerator {
         let toolConfig = try JSONDecoder().decode(ToolConfiguration.self, from: data)
         return toolConfig
       } catch {
-        Diagnostics.emit(.error, "Failed to load ToolConfiguration file.")
+        printDiagnostics(.error, "Failed to load ToolConfiguration file.")
       }
     }
     let toolConfig = ToolConfiguration()
@@ -205,7 +204,7 @@ struct PackageGenerator {
       let data = try JSONEncoder().encode(toolConfig)
       try data.write(to: toolConfigFileURL, options: [.atomic])
     } catch {
-      Diagnostics.emit(.warning, "Failed to write ToolConfiguration file.")
+      printDiagnostics(.warning, "Failed to write ToolConfiguration file.")
     }
   }
   
@@ -231,20 +230,20 @@ struct PackageGenerator {
   
   private static func createDefaultConfiguration(_ configurationFileURL: FileURL) {
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
-      Diagnostics.emit(.error, "Missing a configuration file at \(configurationFileURL.path)")
-      Diagnostics.emit(.error, "We will generate a default one for you but you will need to customise it.")
+      printDiagnostics(.warning, "Missing a configuration file at \(configurationFileURL.path)")
+      fatalErrorWithDiagnostics("We will generate a default one for you but you will need to customise it.")
       var defaultConf: Data!
       do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         defaultConf = try encoder.encode(PackageGeneratorConfiguration())
       } catch {
-        fatalError(.error, "Failed to encode a default configuration.")
+        fatalErrorWithDiagnostics("Failed to encode a default configuration.")
       }
       do {
         try defaultConf.write(to: configurationFileURL, options: [.atomic])
       } catch {
-        fatalError(.error, "Failed to encode write a default configuration at \(configurationFileURL.path)")
+        fatalErrorWithDiagnostics("Failed to encode write a default configuration at \(configurationFileURL.path)")
       }
     }
   }
@@ -254,18 +253,18 @@ struct PackageGenerator {
     do {
       data = try Data(contentsOf: configurationFileURL)
       if data.isEmpty {
-        fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)")
+        fatalErrorWithDiagnostics("Failed to read Data from file \(configurationFileURL.path)")
       }
     } catch {
-      fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)\n\(dump(error))")
+      fatalErrorWithDiagnostics("Failed to read Data from file \(configurationFileURL.path)\n\(dump(error))")
     }
     var config: PackageGeneratorConfiguration
     do {
       config = try JSONDecoder().decode(PackageGeneratorConfiguration.self, from: data)
     } catch {
-      Diagnostics.emit(.error, "packageDirectories might be empty")
-      Diagnostics.emit(.error, String(data: data, encoding: String.Encoding.utf8) ?? "<nil>")
-      fatalError(.error, "Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
+      printDiagnostics(.warning, "packageDirectories might be empty")
+      printDiagnostics(.warning, String(data: data, encoding: String.Encoding.utf8) ?? "<nil>")
+      fatalErrorWithDiagnostics("Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
     }
     
     if config.verbose { print(config) }
@@ -274,10 +273,10 @@ struct PackageGenerator {
   
   private static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL) {
     if config.headerFileURL == nil || config.headerFileURL?.fileURL.path.isEmpty == true {
-      fatalError(.error, "headerFileURL in \(configurationFileURL.path) should not be empty")
+      fatalErrorWithDiagnostics("headerFileURL in \(configurationFileURL.path) should not be empty")
     }
     if config.packageDirectories.isEmpty {
-      fatalError(.error, "packageDirectories in \(configurationFileURL.path) should not be empty")
+      fatalErrorWithDiagnostics("packageDirectories in \(configurationFileURL.path) should not be empty")
     }
   }
   
