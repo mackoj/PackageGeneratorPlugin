@@ -6,7 +6,6 @@ extension String {
   }
 }
 
-
 struct PackageGeneratorConfiguration: Codable {
   var mappers: Mappers
   var verbose: Bool

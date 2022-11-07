@@ -337,7 +337,7 @@ struct PackageGenerator {
       let packageFolder = parsedPackage.fullPath
       last = fakeTargetToSwiftCode(parsedPackage, configuration)
       if configuration.pragmaMark == true, let linePath = URL(string: packageFolder, relativeTo: sourceCodePath) {
-        if let newLastCommon = generateHeader(lastCommonPath, linePath.path) {
+        if let newLastCommon = generateHeader(lastCommonPath, linePath.relativePath) {
           outputFileHandle.write("// MARK: -\n".data(using: .utf8)!)
           outputFileHandle.write("// MARK: \(newLastCommon)\n".data(using: .utf8)!)
           lastCommonPath = newLastCommon
