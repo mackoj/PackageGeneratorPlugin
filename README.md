@@ -3,9 +3,9 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmackoj%2FPackageGeneratorPlugin%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/mackoj/PackageGeneratorPlugin)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmackoj%2FPackageGeneratorPlugin%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mackoj/PackageGeneratorPlugin)
 
-Package Generator is a Swift Package Manager Plugin for simply updating your `Package.swift` file consistently and understandably. This is a great tool for projects that are heavily modularized or use TCA and thus rely on a clean and updated `Package.swift`.
+⚠️ This only support Apple Silicon computer at the moment and is in beta.
 
-⚠️ This only support Apple Silicon computer at the moment.
+Package Generator is a Swift Package Manager Plugin for simply updating your `Package.swift` file consistently and understandably. This is a great tool for projects that are heavily modularized or use TCA and thus rely on a clean and updated `Package.swift`.
 
 * [How does it work?](#how-does-it-work)
 * [Installation](#installation)
