@@ -37,6 +37,7 @@ This file contain theses keys:
 - `headerFileURL`: A string that represent the path of the file that will be copied at the top of the `Package.swift`
 - `spaces`: An int that represent the number of spaces that the `Package.swift` generator should use when adding content
 - `verbose`: A bool that represent if it should print more information in the console
+- `pragmaMark`: A bool that represent if we should add `// MARK: -` in the generated file
 - `dryRun`: A bool that represent if the generator should replace the `Package.swift` file or create a `Package_generated.swift`
 - `mappers.targets`: An dictionary that handle target renaming the key represent a target lastPathComponent and the value represent the name to apply. For exemple in the `packageDirectories` I have `Sources/App/Helpers/Foundation` but in my code I import `FoundationHelpers`.
 - `mappers.imports`: An dictionary that represent how to map import that require a `.product` in SPM for exemple `ComposableArchitecture` require to be called `.product(name: "ComposableArchitecture", package: "swift-composable-architecture")` in a `Package.swift`.
@@ -55,6 +56,7 @@ This file contain theses keys:
   ],
   "headerFileURL": "header.swift",
   "verbose": false,
+  "pragmaMark": false,
   "spaces": 2,
   "dryRun": true,
   "mappers": {
