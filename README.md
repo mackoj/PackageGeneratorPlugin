@@ -30,7 +30,7 @@ The plugin will display messages and errors in **Xcode Report navigator**.
 | --- | --- | --- |
 | 0 | To run it right click on the package you want to run it on. | ![Capture d’écran 2022-11-07 à 11 04 05](https://user-images.githubusercontent.com/661647/200282866-d509a44e-df6b-4fc5-aab1-5fe1aeba2c1c.png) |
 | 1 | It will propose you to run it you can provide an optional argument(`--confFile newName.json`) in the argument pane, which will allow you to change the name of the configuration file. Once change the new configuration file name will be stored | ![Capture d’écran 2022-11-07 à 11 05 28](https://user-images.githubusercontent.com/661647/200283337-b89744f5-6b90-4a29-8744-6a5210293146.png) |
-| 2 | At first launch, it will ask for permission to write files into the project directory for it to work you have to say yes. | <img width="361" alt="Capture d’écran 2022-10-21 à 01 35 07" src="https://user-images.githubusercontent.com/661647/200274173-e3e1e1f7-9d93-4a5e-ac4e-062e6cbc5200.png"> |
+| 2 | At first launch, it will ask for permission to write files into the project directory for it to work you have to select "Allow Command to change files". | <img width="361" alt="Capture d’écran 2022-10-21 à 01 35 07" src="https://user-images.githubusercontent.com/661647/200274173-e3e1e1f7-9d93-4a5e-ac4e-062e6cbc5200.png"> |
 
 _By default to prevent any surprise it will do a dry-run(not modifying your `Package.swift` but creating a `Package_generated.swift`) for you to allow you time to review it before using it._
 
