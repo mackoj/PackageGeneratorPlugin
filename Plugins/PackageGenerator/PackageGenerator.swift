@@ -3,7 +3,7 @@ import PackagePlugin
 
 struct PackageGenerator {
   
-  public static func generate(_ context: PackagePlugin.PluginContext, _ arguments: [String]) {
+  static func generate(_ context: PackagePlugin.PluginContext, _ arguments: [String]) {
     let packageDirectory = FileURL(fileURLWithPath: context.package.directory.string)
     let packageTempFolder = FileURL(fileURLWithPath: context.pluginWorkDirectory.string)
     
@@ -106,13 +106,15 @@ struct PackageGenerator {
     }
     
     // UpdateIsLeaf
-    if config.leafInfo {
+    if config.leafInfo == true {
       if config.verbose { print("Update leaf status in Packages...") }
       parsedPackages = updateIsLeaf(config, parsedPackages)
     }
-
-    updateIsUnsused(config, parsedPackages)
-
+    
+    if config.unusedThreshold != nil {
+      updateIsUnsused(config, parsedPackages)
+    }
+    
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
     
     // Write Package.swift
@@ -165,7 +167,7 @@ struct PackageGenerator {
     
     // Write Targets
     if config.verbose { print("Generating Targets...") }
-    generateTargets(parsedPackages, outputFileHandle, config)
+    generateTargets(parsedPackages, outputFileHandle, config, packageDirectory)
     outputFileHandle.closeFile()
   }
   
@@ -270,6 +272,7 @@ struct PackageGenerator {
   
   // MARK: ParsedPackage Processing
   private static func updateIsUnsused(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) {
+    let unusedThreshold = configuration.unusedThreshold ?? defaultUnusedThreshold
     let names = Set<String>(inputParsedPackages.map { $0.name })
     for name in names {
       var usedCount = 0
@@ -278,7 +281,7 @@ struct PackageGenerator {
           usedCount += 1
         }
       }
-      if usedCount <= configuration.unusedThreshold {
+      if usedCount <= unusedThreshold {
         print("📦 \(name) is used \(usedCount) times")
       }
     }
@@ -319,12 +322,13 @@ struct PackageGenerator {
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
   
-  private static func generateTargets(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration) {
+  private static func generateTargets(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration, _ packageDirectory: URL) {
     outputFileHandle.write("// MARK: - Products\n".data(using: .utf8)!)
     outputFileHandle.write("package.targets.append(contentsOf: [\n".data(using: .utf8)!)
     
+    let sourceCodePath = packageDirectory.appendingPathComponent("Sources")
     var last: String = ""
-//    var lastCommonPath: String = ""
+    var lastCommonPath: String = ""
     for parsedPackage in parsedPackages {
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
@@ -332,11 +336,13 @@ struct PackageGenerator {
       
       let packageFolder = parsedPackage.fullPath
       last = fakeTargetToSwiftCode(parsedPackage, configuration)
-      //      if let newLastCommon = generateHeader(lastCommonPath, URL(string: packageFolder.path, relativeTo: sourceCodePath)) {
-      //        outputFileHandle.write("// MARK: -\n".data(using: .utf8)!)
-      //        outputFileHandle.write("// MARK: \(newLastCommon)\n".data(using: .utf8)!)
-      //        lastCommonPath = newLastCommon
-      //      }
+      if configuration.pragmaMark == true, let linePath = URL(string: packageFolder, relativeTo: sourceCodePath) {
+        if let newLastCommon = generateHeader(lastCommonPath, linePath.relativePath) {
+          outputFileHandle.write("// MARK: -\n".data(using: .utf8)!)
+          outputFileHandle.write("// MARK: \(newLastCommon)\n".data(using: .utf8)!)
+          lastCommonPath = newLastCommon
+        }
+      }
     }
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
