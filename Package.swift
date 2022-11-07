@@ -25,7 +25,7 @@ let package = Package(
           description: "Generate the Package.swift based on packageGenerator.json"
         ),
         permissions: [
-          .writeToPackageDirectory(reason: "This plug-in need to update the Package.swift in the source directory folder."),
+          .writeToPackageDirectory(reason: "This plug-in need to update the Package.swift in the package folder."),
         ]
       ),
       dependencies: [
