@@ -101,8 +101,6 @@ The content of `headerFileURL` from the configuration will be added to the top o
 
 I advise adding all required `dependencies` and **Test Targets**, **System Librarys**, **Executable Targets** and **Binary Targets**(https://github.com/mackoj/PackageGeneratorPlugin/issues/8).
 
-If a target requires parameters other than(name, dependencies, and path) it should be in there too since other parameters are not yet supported(https://github.com/mackoj/PackageGeneratorPlugin/issues/6).
-
 ```swift
 // swift-tools-version:5.7
 // The swift-tools-version declares the minimum version of Swift required to build this package.
