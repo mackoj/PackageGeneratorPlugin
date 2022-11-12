@@ -2,7 +2,7 @@ import Foundation
 
 struct PackageGenerator {
   
-  static func generate(_ context: Context, _ arguments: [String]) {
+  static func generate(_ context: Context, _ arguments: [String]) throws {
     let packageDirectory = context.packageDirectory
     let packageTempFolder = context.packageTempFolder
     
@@ -15,10 +15,10 @@ struct PackageGenerator {
     saveToolConfig(toolConfig, toolConfigFileURL)
     let configurationFileURL = getConfigurationFileURL(packageDirectory, arguments, toolConfig.defaultConfigFileName)
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
-      createDefaultConfiguration(configurationFileURL)
+      try createDefaultConfiguration(configurationFileURL)
     }
-    let config = loadConfiguration(configurationFileURL)
-    validateConfiguration(config, configurationFileURL)
+    let config = try loadConfiguration(configurationFileURL)
+    try validateConfiguration(config, configurationFileURL)
     
     if config.verbose { print(toolConfig) }
     if config.verbose { print(context) }
@@ -35,7 +35,8 @@ struct PackageGenerator {
       let packageDirectoriesData = try JSONEncoder().encode(config.packageDirectories)
       try packageDirectoriesData.write(to: packagesFileURL, options: [.atomic])
     } catch {
-      fatalErrorWithDiagnostics("Failed to share data with the cli.")
+      try fatalErrorWithDiagnostics("Failed to share data with the cli.")
+      exit(EXIT_FAILURE)
     }
     
     var cliArguments: [String] = [
@@ -55,7 +56,7 @@ struct PackageGenerator {
       print("package-generator-cli", cliArguments.joined(separator: " "))
     }
     
-    runCli(
+    try runCli(
       context: context,
       arguments: cliArguments,
       verbose: config.verbose
@@ -71,7 +72,8 @@ struct PackageGenerator {
       let data = try Data(contentsOf: parsedPackageFileURL)
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
     } catch {
-      fatalErrorWithDiagnostics("Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
+      try fatalErrorWithDiagnostics("Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
+      exit(EXIT_FAILURE)
     }
     
     do {
@@ -135,7 +137,8 @@ struct PackageGenerator {
       do {
         try FileManager.default.removeItem(at: outputURL)
       } catch {
-        fatalErrorWithDiagnostics("Failed to remove \(outputURL.path)")
+        try fatalErrorWithDiagnostics("Failed to remove \(outputURL.path)")
+        exit(EXIT_FAILURE)
       }
       
     }
@@ -151,20 +154,24 @@ struct PackageGenerator {
     do {
       outputFileHandle = try FileHandle(forWritingTo: outputURL)
     } catch {
-      fatalErrorWithDiagnostics("Failed to create FileHandle for \(outputURL.path)")
+      try fatalErrorWithDiagnostics("Failed to create FileHandle for \(outputURL.path)")
+      exit(EXIT_FAILURE)
     }
     guard let headerFileURL = config.headerFileURL else {
-      fatalErrorWithDiagnostics("No header fileURL configured")
+      try fatalErrorWithDiagnostics("No header fileURL configured")
+      exit(EXIT_FAILURE)
     }
     if FileManager.default.fileExists(atPath: headerFileURL.fileURL.path) == false {
-      fatalErrorWithDiagnostics("No header file found at \(headerFileURL.fileURL.path)")
+      try fatalErrorWithDiagnostics("No header file found at \(headerFileURL.fileURL.path)")
+      exit(EXIT_FAILURE)
     }
     
     var headerData: Data
     do {
       headerData = try Data(contentsOf: headerFileURL.fileURL)
     } catch {
-      fatalErrorWithDiagnostics("Failed to load header data")
+      try fatalErrorWithDiagnostics("Failed to load header data")
+      exit(EXIT_FAILURE)
     }
     
     outputFileHandle.write(headerData)
@@ -184,7 +191,7 @@ struct PackageGenerator {
   // MARK: - Private
   
   // MARK: ToolConfiguration
-  private static func getDefaultConfigurationName(_ toolConfigFileURL: FileURL) -> ToolConfiguration {
+  static func getDefaultConfigurationName(_ toolConfigFileURL: FileURL) -> ToolConfiguration {
     if FileManager.default.fileExists(atPath: toolConfigFileURL.path) {
       do {
         let data = try Data(contentsOf: toolConfigFileURL)
@@ -199,7 +206,7 @@ struct PackageGenerator {
     return toolConfig
   }
   
-  private static func saveToolConfig(_ toolConfig: ToolConfiguration, _ toolConfigFileURL: FileURL) {
+  static func saveToolConfig(_ toolConfig: ToolConfiguration, _ toolConfigFileURL: FileURL) {
     do {
       let data = try JSONEncoder().encode(toolConfig)
       try data.write(to: toolConfigFileURL, options: [.atomic])
@@ -209,7 +216,7 @@ struct PackageGenerator {
   }
   
   // MARK: Configuration
-  private static func updateDefaultConfigFileName(_ arguments: [String], _ toolConfig: ToolConfiguration) -> ToolConfiguration {
+  static func updateDefaultConfigFileName(_ arguments: [String], _ toolConfig: ToolConfiguration) -> ToolConfiguration {
     var toolConfig = toolConfig
     var configurationFileName = toolConfig.defaultConfigFileName
     if let cf = arguments.firstIndex(of: "--confFile") {
@@ -223,40 +230,44 @@ struct PackageGenerator {
     return toolConfig
   }
   
-  private static func getConfigurationFileURL(_ packageDirectory: FileURL, _ arguments: [String], _ configurationFileName: String) -> FileURL {
+  static func getConfigurationFileURL(_ packageDirectory: FileURL, _ arguments: [String], _ configurationFileName: String) -> FileURL {
     let configurationFileURL = packageDirectory.appendingPathComponent(configurationFileName)
     return configurationFileURL
   }
   
-  private static func createDefaultConfiguration(_ configurationFileURL: FileURL) {
+  static func createDefaultConfiguration(_ configurationFileURL: FileURL) throws {
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
       printDiagnostics(.warning, "Missing a configuration file at \(configurationFileURL.path)")
-      fatalErrorWithDiagnostics("We will generate a default one for you but you will need to customise it.")
+      try fatalErrorWithDiagnostics("We will generate a default one for you but you will need to customise it.")
       var defaultConf: Data!
       do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         defaultConf = try encoder.encode(PackageGeneratorConfiguration())
       } catch {
-        fatalErrorWithDiagnostics("Failed to encode a default configuration.")
+        try fatalErrorWithDiagnostics("Failed to encode a default configuration.")
+        exit(EXIT_FAILURE)
       }
       do {
         try defaultConf.write(to: configurationFileURL, options: [.atomic])
       } catch {
-        fatalErrorWithDiagnostics("Failed to encode write a default configuration at \(configurationFileURL.path)")
+        try fatalErrorWithDiagnostics("Failed to encode write a default configuration at \(configurationFileURL.path)")
+        exit(EXIT_FAILURE)
       }
     }
   }
   
-  private static func loadConfiguration(_ configurationFileURL: FileURL) -> PackageGeneratorConfiguration{
+  static func loadConfiguration(_ configurationFileURL: FileURL)  throws -> PackageGeneratorConfiguration{
     var data: Data
     do {
       data = try Data(contentsOf: configurationFileURL)
       if data.isEmpty {
-        fatalErrorWithDiagnostics("Failed to read Data from file \(configurationFileURL.path)")
+        try fatalErrorWithDiagnostics("Failed to read Data from file \(configurationFileURL.path)")
+        exit(EXIT_FAILURE)
       }
     } catch {
-      fatalErrorWithDiagnostics("Failed to read Data from file \(configurationFileURL.path)\n\(dump(error))")
+      try fatalErrorWithDiagnostics("Failed to read Data from file \(configurationFileURL.path)\n\(dump(error))")
+      exit(EXIT_FAILURE)
     }
     var config: PackageGeneratorConfiguration
     do {
@@ -264,24 +275,31 @@ struct PackageGenerator {
     } catch {
       printDiagnostics(.warning, "packageDirectories might be empty")
       printDiagnostics(.warning, String(data: data, encoding: String.Encoding.utf8) ?? "<nil>")
-      fatalErrorWithDiagnostics("Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
+      try fatalErrorWithDiagnostics("Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
+      exit(EXIT_FAILURE)
     }
     
     if config.verbose { print(config) }
     return config
   }
   
-  private static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL) {
+  static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL)  throws {
     if config.headerFileURL == nil || config.headerFileURL?.fileURL.path.isEmpty == true {
-      fatalErrorWithDiagnostics("headerFileURL in \(configurationFileURL.path) should not be empty")
+      try fatalErrorWithDiagnostics("headerFileURL in \(configurationFileURL.path) should not be empty")
+      exit(EXIT_FAILURE)
     }
     if config.packageDirectories.isEmpty {
-      fatalErrorWithDiagnostics("packageDirectories in \(configurationFileURL.path) should not be empty")
+      try fatalErrorWithDiagnostics("packageDirectories in \(configurationFileURL.path) should not be empty")
+      exit(EXIT_FAILURE)
+    }
+    if config.spaces < 0 || config.spaces > 8 {
+      try fatalErrorWithDiagnostics("config.spaces is out of bound (space > 0 && space < 8)")
+      exit(EXIT_FAILURE)
     }
   }
   
   // MARK: ParsedPackage Processing
-  private static func updateIsUnsused(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) {
+  static func updateIsUnsused(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) {
     let unusedThreshold = configuration.unusedThreshold ?? defaultUnusedThreshold
     let names = Set<String>(inputParsedPackages.map { $0.name })
     for name in names {
@@ -297,7 +315,7 @@ struct PackageGenerator {
     }
   }
   
-  private static func updateIsLeaf(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) -> [ParsedPackage] {
+  static func updateIsLeaf(_ configuration: PackageGeneratorConfiguration, _ inputParsedPackages: [ParsedPackage]) -> [ParsedPackage] {
     let names = Set<String>(inputParsedPackages.map { $0.name })
     var parsedPackages = inputParsedPackages
     var biggest: Int = 0
@@ -316,7 +334,7 @@ struct PackageGenerator {
   }
   
   // MARK: Generate
-  private static func generateProducts(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration) {
+  static func generateProducts(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration) {
     outputFileHandle.write("// MARK: - Targets\n".data(using: .utf8)!)
     outputFileHandle.write("package.products.append(contentsOf: [\n".data(using: .utf8)!)
     
@@ -332,7 +350,7 @@ struct PackageGenerator {
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
   
-  private static func generateTargets(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration, _ packageDirectory: URL) {
+  static func generateTargets(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration, _ packageDirectory: URL) {
     outputFileHandle.write("// MARK: - Products\n".data(using: .utf8)!)
     outputFileHandle.write("package.targets.append(contentsOf: [\n".data(using: .utf8)!)
     
@@ -357,7 +375,7 @@ struct PackageGenerator {
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
   
-  private static func fakeTargetToSwiftCode(_ fakeTarget: ParsedPackage, _ configuration: PackageGeneratorConfiguration) -> String {
+  static func fakeTargetToSwiftCode(_ fakeTarget: ParsedPackage, _ configuration: PackageGeneratorConfiguration) -> String {
     let spaces = String(repeating: " ", count: configuration.spaces)
     let localDependencies = fakeTarget.dependencies
     var dependencies = ""
@@ -380,7 +398,7 @@ struct PackageGenerator {
    """
   }
   
-  private static func generateHeader(_ lastCommon: String, _ line: String) -> String? {
+  static func generateHeader(_ lastCommon: String, _ line: String) -> String? {
     let withoutSource = line.replacingOccurrences(of: "Sources/", with: "")
     let nbSlashes = withoutSource.count(of: "/")
     var futureLastCommon = ""

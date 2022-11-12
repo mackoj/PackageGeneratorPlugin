@@ -4,7 +4,7 @@ func runCli(
   context: Context,
   arguments: [String],
   verbose: Bool
-) {
+) throws {
   let toolURL = context.toolURL
   
   var processArguments: [String] = []
@@ -16,13 +16,15 @@ func runCli(
   do {
     try process.run()
   } catch {
-    fatalErrorWithDiagnostics("Failed run process \(process.description)")
+    try fatalErrorWithDiagnostics("Failed run process \(process.description)")
+    exit(EXIT_FAILURE)
   }
   process.waitUntilExit()
   
   if process.terminationReason == .exit, process.terminationStatus == 0 {
   } else {
     let problem = "\(process.terminationReason):\(process.terminationStatus)"
-    fatalErrorWithDiagnostics("\(context.toolName) invocation failed: \(problem)")
+    try fatalErrorWithDiagnostics("\(context.toolName) invocation failed: \(problem)")
+    exit(EXIT_FAILURE)
   }
 }

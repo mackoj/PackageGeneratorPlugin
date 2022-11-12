@@ -9,7 +9,7 @@ let package = Package(
     .macOS(.v12),
   ],
   products: [
-    .plugin(name: "PackageGenerator", targets: ["PackageGenerator"]),
+    .plugin(name: "PackageGenerator", targets: ["Package Generator"]),
     .library(name: "PackageGeneratorLib", targets: ["PackageGeneratorLib"]),
   ],
   targets: [
@@ -19,7 +19,7 @@ let package = Package(
       checksum: "a411312bd07e5234578fd460c215ef63a1799f49a7aa39ac81f8b77e708ae0de"
     ),
     .plugin(
-      name: "PackageGenerator",
+      name: "Package Generator",
       capability: .command(
         intent: .custom(
           verb: "package-generator",
@@ -31,7 +31,8 @@ let package = Package(
       ),
       dependencies: [
         .target(name: "package-generator-cli")
-      ]
+      ],
+      path: "Plugins/PackageGenerator"
     ),
     .target(
       name: "PackageGeneratorLib"

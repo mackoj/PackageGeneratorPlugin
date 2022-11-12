@@ -11,6 +11,7 @@ Package Generator is a Swift Package Manager Plugin for simply updating your `Pa
 * [Installation](#installation)
 * [Basic usage](#basic-usage)
 * [Configuration](#configuration)
+* [FAQ](#faq)
 
 ## How does it work?
 
@@ -152,3 +153,17 @@ package.targets.append(contentsOf: [
   ),
 ])
 ```
+
+## FAQ
+
+> Why does the plugin need a cli ?
+Because I cannot import other package in a SPM Plugin and I need [swift-syntax](https://github.com/apple/swift-syntax.git)
+
+> It always create an invalide `Package.swift` file.
+Look at the `Report Navigator` in Xcode it might be due to import that don't exist or that require the use of [mappers-imports](#configuration). 
+
+> I did add a new dependencies and after regenerating the Package.swift file it disappear.
+You have to add new `dependencies` and **Test Targets**, **System Librarys**, **Executable Targets** and **Binary Targets** in the [header file](#header-file).
+
+> Why don't you use an hidden file like `.packageGenerator` for configuring the tool ?
+Because it would not be visible in Xcode and this file might need to be edit often. But you can change this if you want by giving the `--confFile` argument when using the tool.

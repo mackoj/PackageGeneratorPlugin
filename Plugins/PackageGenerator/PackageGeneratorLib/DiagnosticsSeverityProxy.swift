@@ -9,9 +9,9 @@ enum DiagnosticsSeverityProxy: String, Encodable {
 #if canImport(PackagePlugin)
 import PackagePlugin
 
-func fatalErrorWithDiagnostics(_ description: String, file: StaticString = #file, line: UInt = #line) -> Never {
+func fatalErrorWithDiagnostics(_ description: String, file: String = #fileID, line: UInt = #line) throws {
   Diagnostics.emit(.error, description)
-  fatalError(file: file, line: line)
+//  fatalError(file: file, line: line)
 }
 
 func printDiagnostics(_ severity: DiagnosticsSeverityProxy, _ description: String, file: String? = #file, line: Int? = #line) {
@@ -33,7 +33,7 @@ func printDiagnostics(_ severity: DiagnosticsSeverityProxy, _ description: Strin
   print(description)
 }
 
-func fatalErrorWithDiagnostics(_ description: String, file: StaticString = #file, line: UInt = #line) -> Never {
-  fatalError(description, file: file, line: line)
+func fatalErrorWithDiagnostics(_ description: String, file: String = #fileID, line: UInt = #line) throws {
+  throw(PackageGeneratorError(content: description, file: file, line: line))
 }
 #endif
