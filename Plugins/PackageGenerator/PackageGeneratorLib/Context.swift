@@ -1,12 +1,20 @@
 import Foundation
 
 struct Context: CustomStringConvertible {
-  let packageDirectory: FileURL
-  let packageTempFolder: FileURL
-  let toolURL: FileURL
-  let toolName: String
+  var packageDirectory: FileURL
+  var packageTempFolder: FileURL
+  var toolURL: FileURL
+  var toolName: String
+  var targetsName: [String] // cannot be empty
 
   var description: String {
-    "Context:\npackageDirectory: \(packageDirectory)\npackageTempFolder: \(packageTempFolder)\ntoolURL: \(toolURL)\ntoolName: \(toolName)"
+    """
+    Context:
+    packageDirectory: \(packageDirectory)
+    packageTempFolder: \(packageTempFolder)
+    toolURL: \(toolURL)
+    toolName: \(toolName)
+    targetsName: \(targetsName)
+    """
   }
 }

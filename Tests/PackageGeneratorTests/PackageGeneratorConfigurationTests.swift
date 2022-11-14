@@ -5,16 +5,92 @@ import Foundation
 @available(macOS 13.0, *)
 @MainActor
 class PackageGeneratorConfigurationTests: XCTestCase {
+  func testHeaderBadPathLoading() async throws {
+    let confFileURL = try badConfigurationFileBuilder { $0["headerFileURL"] = 1 }
+    XCTAssertThrowsError(try PackageGenerator.loadConfiguration(confFileURL), "Failed to decode(Int)")
+
+    let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
+    try Data().write(to: headerFileURL)
+    XCTAssertThrowsError(try PackageGenerator.loadConfiguration(headerFileURL), "headerFileURL: is empty")
+    try FileManager.default.removeItem(at: headerFileURL)
+  }
+
+  func testHeaderBadPathContent() async throws {
+    var context = context()
+    var (conf, confFileURL) = conf()
+    let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
+    conf.headerFileURL = headerFileURL.path
+    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "headerFileURL: File not found")
+    //    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL), "headerFileURL: File not readable")
+  }
+
+  func testHeaderHappyPath() async throws {
+    var context = context()
+    var (conf, confFileURL) = conf()
+    let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
+    conf.headerFileURL = headerFileURL.path
+    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "headerFileURL: ok")
+  }
+  
+  func testSpacesBadPathLoading() async throws {
+    let confFileURL = try badConfigurationFileBuilder { $0["spaces"] = "tartempion" }
+    XCTAssertThrowsError(try PackageGenerator.loadConfiguration(confFileURL), "spaces: Failed to decode(String)")
+  }
+  
+  func testSpacesBadPathContent() async throws {
+    var context = context()
+    var (conf, confFileURL) = conf()
+    conf.spaces = -1
+    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "spaces: <0")
+    conf.spaces = 9
+    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "spaces: >8")
+  }
+  
+  func testSpacesHappyPath() async throws {
+    var context = context()
+    var (conf, confFileURL) = conf()
+    XCTAssertEqual(2, conf.spaces, "spaces: default == 2")
+    conf.spaces = 0
+    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "spaces: ok")
+    conf.spaces = 8
+    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "spaces: ok")
+  }
     
+  func testDryRunHappyPath() async throws {
+    var (conf, confFileURL) = conf()
+    XCTAssertEqual(true, conf.dryRun, "dryRun: default == true")
+  }
+
+  func testPragmaMarkHappyPath() async throws {
+    var (conf, confFileURL) = conf()
+    XCTAssertEqual(false, conf.pragmaMark, "pragmaMark: default == false")
+  }
+
+  func testTargetsParametersBadPathContent() async throws {
+    var context = context()
+    var (conf, confFileURL) = conf()
+
+    conf.targetsParameters?[UUID().uuidString] = []
+    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "targetsParameters: no corresponding target")
+
+    let targetName = UUID().uuidString
+    conf.targetsParameters?[targetName] = []
+    context.targetsName.append(targetName)
+    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "targetsParameters: no parameter for target")
+  }
+
+  func testTargetsParametersBadPath() async throws {
+    var context = context()
+    var (conf, confFileURL) = conf()
+
+    let targetName = UUID().uuidString
+    conf.targetsParameters?[targetName] = ["Do Something"]
+    context.targetsName.append(targetName)
+    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL, context), "targetsParameters: ok")
+  }
+
   // loading
   /*
-   - dryRun: Failed to decode(String)
-   - dryRun: not set == false
-   - pragmaMark: Failed to decode(String)
-   - pragmaMark: not set == false
-   - targetsParameters: Failed to decode(String)
-   - targetsParameters: not set == empty
-   - targetsParameters: Non existing target
    - exclusions.imports: Failed to decode(String)
    - exclusions.imports: not set == empty
    - exclusions.imports: Non existing Import
@@ -39,7 +115,7 @@ class PackageGeneratorConfigurationTests: XCTestCase {
    - version: Failed to decode(String)
    - version: This should not be empty
    - version: This should be == 1
-
+   
    //    { error in
    //      XCTAssertEqual(
    //        """
@@ -47,56 +123,8 @@ class PackageGeneratorConfigurationTests: XCTestCase {
    //        """,
    //        "\(error.localizedDescription)")
    //    }
-
+   
    */
   
-  
-  func testBadLoadingHeader() async throws {
-    let confFileURL = try badConfigurationFileBuilder { $0["headerFileURL"] = 1 }
-    XCTAssertThrowsError(try PackageGenerator.loadConfiguration(confFileURL), "Failed to decode(Int)")
-
-    let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
-    try Data().write(to: headerFileURL)
-    XCTAssertThrowsError(try PackageGenerator.loadConfiguration(headerFileURL), "headerFileURL: is empty")
-    try FileManager.default.removeItem(at: headerFileURL)
-  }
-
-  func testBadHeaderContent() async throws {
-    let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
-    let confFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
-    var conf = PackageGeneratorConfiguration()
-    conf.headerFileURL = headerFileURL.path
-    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL), "headerFileURL: File not found")
-    //    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL), "headerFileURL: File not readable")
-  }
-
-  func testHeaderHappyPath() async throws {
-    var (conf, confFileURL) = correctConf()
-    let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
-    conf.headerFileURL = headerFileURL.path
-    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL), "headerFileURL: ok")
-  }
-  
-  func testBadLoadingSpaces() async throws {
-    let confFileURL = try badConfigurationFileBuilder { $0["spaces"] = "tartempion" }
-    XCTAssertThrowsError(try PackageGenerator.loadConfiguration(confFileURL), "spaces: Failed to decode(String)")
-  }
-  
-  func testBadSpacesContent() async throws {
-    var (conf, confFileURL) = correctConf()
-    conf.spaces = -1
-    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL), "spaces: <0")
-    conf.spaces = 9
-    XCTAssertThrowsError(try PackageGenerator.validateConfiguration(conf, confFileURL), "spaces: >8")
-  }
-  
-  func testSpacesHappyPath() async throws {
-    var (conf, confFileURL) = correctConf()
-    XCTAssertEqual(2, conf.spaces, "spaces: default == 2")
-    conf.spaces = 0
-    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL), "spaces: ok")
-    conf.spaces = 8
-    XCTAssertNoThrow(try PackageGenerator.validateConfiguration(conf, confFileURL), "spaces: ok")
-  }
 
 }

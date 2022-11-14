@@ -13,7 +13,8 @@ extension PackagePlugin.PluginContext {
       packageDirectory: FileURL(fileURLWithPath: self.package.directory.string),
       packageTempFolder: FileURL(fileURLWithPath: self.pluginWorkDirectory.string),
       toolURL: FileURL(fileURLWithPath: tool.path.string),
-      toolName: toolName
+      toolName: toolName,
+      targetsName: self.package.targets.map(\.name)
     )
   }
 }

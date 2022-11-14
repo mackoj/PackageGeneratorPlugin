@@ -18,11 +18,11 @@ struct PackageGenerator {
       try createDefaultConfiguration(configurationFileURL)
     }
     let config = try loadConfiguration(configurationFileURL)
-    try validateConfiguration(config, configurationFileURL)
+    try validateConfiguration(config, configurationFileURL, context)
     
     if config.verbose { print(toolConfig) }
     if config.verbose { print(context) }
-
+    
     /// Generate ParsedPackage
     let parsedPackageFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
     let packagesFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
@@ -126,7 +126,7 @@ struct PackageGenerator {
         }
       }
     }
-
+    
     if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
     
     // Write Package.swift
@@ -283,7 +283,9 @@ struct PackageGenerator {
     return config
   }
   
-  static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL)  throws {
+  // TODO: validation du context
+  // TODO: validation du la conf return un tableau qui peut etre vide si aucun pb
+  static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL, _ context: Context) throws {
     if config.headerFileURL == nil || config.headerFileURL?.fileURL.path.isEmpty == true {
       try fatalErrorWithDiagnostics("headerFileURL in \(configurationFileURL.path) should not be empty")
       exit(EXIT_FAILURE)
@@ -296,6 +298,26 @@ struct PackageGenerator {
       try fatalErrorWithDiagnostics("config.spaces is out of bound (space > 0 && space < 8)")
       exit(EXIT_FAILURE)
     }
+    
+    for (key, value) in config.targetsParameters {
+      if value.isEmpty {
+        try fatalErrorWithDiagnostics("Target \(missingTarget) has no custom parameters")
+        exit(EXIT_FAILURE)
+      }
+    }
+    
+    let targetsParametersNameRaw = config.targetsParameters?.reduce(into: [String](), { partialResult, arg in
+      partialResult.append(arg.key)
+    }) ?? []
+    let targetsParametersName: Set<String> = Set(targetsParametersNameRaw)
+    let hasMissingTargets = targetsParametersName.subtracting(context.targetsName)
+    if hasMissingTargets.isEmpty == false {
+      for missingTarget in hasMissingTargets {
+        printDiagnostics(.warning, "Target not found for \(missingTarget) in config.targetsParameters")
+      }
+    }
+    
+    if targetsParametersNameRaw
   }
   
   // MARK: ParsedPackage Processing

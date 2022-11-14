@@ -1,7 +1,7 @@
 import Foundation
 @testable import PackageGeneratorLib
 
-func createTestEnvironment() -> Context {
+func context() -> Context {
   let packageDirectory = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
   let packageTempFolder = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
   let toolURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
@@ -10,7 +10,8 @@ func createTestEnvironment() -> Context {
     packageDirectory: packageDirectory,
     packageTempFolder: packageTempFolder,
     toolURL: toolURL,
-    toolName: "package-generator-cli"
+    toolName: "package-generator-cli",
+    targetsName: []
   )
 }
 
@@ -28,7 +29,7 @@ func badConfigurationFileBuilder(_ process: (inout [String: Any]) -> Void) throw
   return confFileURL
 }
 
-func correctConf() -> (PackageGeneratorConfiguration, URL) {
+func conf() -> (PackageGeneratorConfiguration, URL) {
   let headerFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
   let confFileURL = FileManager.default.temporaryDirectory.appendingPathExtension(UUID().uuidString)
   var conf = PackageGeneratorConfiguration()
