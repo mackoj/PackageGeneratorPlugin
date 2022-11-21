@@ -30,7 +30,8 @@ let package = Package(
       ),
       dependencies: [
         .target(name: "package-generator-cli")
-      ]
+      ],
+      path: "Plugins/PackageGenerator"
     ),
   ]
 )
