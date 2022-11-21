@@ -114,39 +114,36 @@ var package = Package(
   platforms: [
     .macOS(.v12),
     .iOS("15.0")
+  ],
+  products: [
+    .executable(name: "server", targets: ["server"]),
+    .executable(name: "parse", targets: ["ParserRunner"]),
+  ],
+  dependencies: [
+    .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.3.0"),
+    .package(url: "https://github.com/mackoj/SchemeGeneratorPlugin.git", from: "0.5.5"),
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.45.0"),
+  ],
+  targets: [
+    // MARK: -
+    // MARK: Test Targets
+    .testTarget(
+      name: "MyProjectTests",
+      dependencies: [
+        "MyProject",
+      ]
+    ),
+    
+    // MARK: -
+    // MARK: Executables
+      .executableTarget(
+        name: "server",
+        path: "Sources/Backend/Sources/Run"
+      ),
+    .executableTarget(
+      name: "ParserRunner",
+      path: "Sources/App/Parsers/Runner"
+    ),
   ]
 )
-
-package.dependencies.append(contentsOf: [
-  .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.3.0"),
-  .package(url: "https://github.com/mackoj/SchemeGeneratorPlugin.git", from: "0.5.5"),
-  .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.45.0"),
-])
-
-package.products.append(contentsOf: [
-  .executable(name: "server", targets: ["server"]),
-  .executable(name: "parse", targets: ["ParserRunner"]),
-])
-
-package.targets.append(contentsOf: [
-  // MARK: -
-  // MARK: Test Targets
-  .testTarget(
-    name: "MyProjectTests",
-    dependencies: [
-      "MyProject",
-    ]
-  ),
-  
-  // MARK: -
-  // MARK: Executables
-  .executableTarget(
-    name: "server",
-    path: "Sources/Backend/Sources/Run"
-  ),
-  .executableTarget(
-    name: "ParserRunner",
-    path: "Sources/App/Parsers/Runner"
-  ),
-])
 ```
