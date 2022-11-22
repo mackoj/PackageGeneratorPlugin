@@ -7,10 +7,19 @@
 
 Package Generator is a Swift Package Manager Plugin for simply updating your `Package.swift` file consistently and understandably. This is a great tool for projects that are heavily modularized or use TCA and thus rely on a clean and updated `Package.swift`.
 
+Package Generator adds imports that it read from the source code files to their target in `Package.swift`. This will help reduce compilation issues with SwiftUI Preview too.
+
+* [First Launch?](#first-launch)
 * [How does it work?](#how-does-it-work)
 * [Installation](#installation)
 * [Basic usage](#basic-usage)
 * [Configuration](#configuration)
+
+## First Launch
+
+After [installing it](#installation) you will be able to run it but for it to work properly it needs to be [configured](#configuration). By default, it will run in `dry-run` and this will create a file `Package_generated.swift` to allow you to see what will happen when it will run. After having properly configured it and testing that the `Package_generated.swift` generate the correct content you will need to set `dry-run` to false in the configuration to write in the real `Package.swift` file.
+
+Each time you need to add a module remember to add it to the configuration file. 
 
 ## How does it work?
 
