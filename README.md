@@ -14,6 +14,7 @@ Package Generator adds imports that it read from the source code files to their 
 * [Installation](#installation)
 * [Basic usage](#basic-usage)
 * [Configuration](#configuration)
+* [FAQ](#faq)
 
 ## First Launch
 
@@ -156,3 +157,17 @@ var package = Package(
   ]
 )
 ```
+
+## FAQ
+
+> The plug-in is not visible.
+This plug-in can work if you do a right click on the package and only if the `Resolves Packages` is passing without issue. 
+
+ > Why does the plugin have an executable dependency?
+ Because we cannot import other packages in an SPM Plugin and we need [swift-syntax](https://github.com/apple/swift-syntax.git) to parse code and extract imports.
+
+ > It always creates an invalid `Package.swift` file.
+ Look at the `Report Navigator` in Xcode it might be due to imports that don't exist or that require the use of [mappers-imports](#configuration). 
+
+ > Why doesn't it use a hidden file like `.packageGenerator` for configuring the tool?
+ Because it would not be visible in Xcode and this file might need to be edited often. But [you can change this](#configuration) if you want by giving the `--confFile` argument when using the tool.
