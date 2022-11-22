@@ -160,9 +160,9 @@ var package = Package(
 
 ## FAQ
 
-> The plug-in is not visible.
+> Why is plug-in is not visible?
 
-This plug-in can work if you do a right click on the package and only if the `Resolves Packages` is passing without issue. 
+This plug-in can work if you do a right click on your project package and only if the `Resolves Packages` is passing without issue. 
 
 > Why does the plugin have an executable dependency?
 
