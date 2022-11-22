@@ -18,7 +18,7 @@ Package Generator adds imports that it read from the source code files to their 
 
 ## First Launch
 
-After [installing it](#installation) you will be able to run it but for it to work properly it needs to be [configured](#configuration). By default, it will run in `dry-run` and this will create a file `Package_generated.swift` to allow you to see what will happen when it will run. After having properly configured it and testing that the `Package_generated.swift` generate the correct content you will need to set `dry-run` to false in the configuration to write in the real `Package.swift` file.
+After [installing it](#installation) you will be able to run it but for it to work properly it needs to be [configured](#configuration). By default, it will run with `dry-run` set to true and this will create a file `Package_generated.swift` to allow you to preview what will happen. After having properly configured it and testing that the `Package_generated.swift` generate the correct content you will need to set `dry-run` to false in the configuration to write in the real `Package.swift` file.
 
 Each time you need to add a module remember to add it to the configuration file. 
 
