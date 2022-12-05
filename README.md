@@ -14,6 +14,7 @@ Package Generator adds imports that it read from the source code files to their 
 * [Installation](#installation)
 * [Basic usage](#basic-usage)
 * [Configuration](#configuration)
+* [CI](#ci)
 * [FAQ](#faq)
 
 ## First Launch
@@ -157,6 +158,12 @@ var package = Package(
   ]
 )
 ```
+
+## CI
+
+You can use it in CI to automatically generate your `Package.swift`.
+
+`swift package plugin --allow-writing-to-package-directory package-generator`
 
 ## FAQ
 
