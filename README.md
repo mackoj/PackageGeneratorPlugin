@@ -31,7 +31,7 @@ The code analyzing part is made using [swift-syntax](https://github.com/apple/sw
 
 ## Installation
 
-Add to your dependencies `.package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.3.0"),`
+Add to your dependencies `.package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.5.0"),`
 
 ## Basic usage
 
