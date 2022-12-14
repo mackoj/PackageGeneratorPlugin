@@ -96,7 +96,7 @@ struct PackageGenerator {
       localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
       localDependencies.sort(by: <)
       parsedPackage.dependencies = localDependencies
-      parsedPackage.name = config.mappers.targets[parsedPackage.name, default: parsedPackage.name]
+      parsedPackage.name = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
       if config.exclusions.targets.contains(parsedPackage.name) == false {
         parsedPackages.append(parsedPackage)
       } else {
@@ -326,7 +326,7 @@ struct PackageGenerator {
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
       }
-      let name = configuration.mappers.targets[parsedPackage.name, default: parsedPackage.name]
+      let name = configuration.mappers.targets[parsedPackage.path, default: parsedPackage.name]
       let spaces = String(repeating: " ", count: configuration.spaces)
       last = "\(spaces).library(name: \"" + name + "\", targets: [\"" + name + "\"])"
     }

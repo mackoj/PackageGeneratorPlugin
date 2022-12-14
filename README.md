@@ -55,7 +55,7 @@ This file contains these keys:
 - `verbose`: A bool that represents if it should print more information in the console
 - `pragmaMark`: A bool that represents if we should add `// MARK: -` in the generated file
 - `dryRun`: A bool that represents if the generator should replace the `Package.swift` file or create a `Package_generated.swift`
-- `mappers.targets`: An dictionary that handles target renaming the key represents a target `lastPathComponent` and the value represents the name to apply. For example in the `packageDirectories` I have `Sources/App/Helpers/Foundation` but in my code, I import `FoundationHelpers`.
+- `mappers.targets`: An dictionary that handles target renaming the key represents a target `path` with the `/` and the value represents the name to apply. For example in the `packageDirectories` I have `Sources/App/Helpers/Foundation` but in my code, I import `FoundationHelpers`.
 - `mappers.imports`: An dictionary that represents how to map import that requires a `.product` in SPM for example `ComposableArchitecture` require to be called `.product(name: "ComposableArchitecture", package: "swift-composable-architecture")` in a `Package.swift`.
 - `exclusions`: An object that represents all imports that should not be added as dependencies to a target or targets in the generated `Package.swift`
 - `exclusions.apple`: An array of string that represents all Apple SDK that should not be add as dependencies to a target
@@ -82,7 +82,7 @@ This file contains these keys:
   "dryRun": true,
   "mappers": {
     "targets": {
-      "Foundation": "FoundationHelpers"
+      "Sources/App/Helpers/Foundation/": "FoundationHelpers",
     },
     "imports": {
       "ComposableArchitecture": ".product(name: \"ComposableArchitecture\", package: \"swift-composable-architecture\")"
