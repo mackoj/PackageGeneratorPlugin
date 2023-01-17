@@ -166,9 +166,9 @@ You can use it in CI to automatically generate your `Package.swift`.
 
 ## FAQ
 
-> Why is plug-in is not visible?
+> Why is the plug-in is not visible in Xcode?
 
-This plug-in can work if you do a right click on your project package and only if the `Resolves Packages` is passing without issue. 
+Plug-in can work if you do a right click on your project package and only if the `Resolves Packages` is passing without issue. 
 
 > Why does the plugin have an executable dependency?
 
