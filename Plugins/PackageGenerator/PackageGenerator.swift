@@ -373,7 +373,19 @@ struct PackageGenerator {
     
     var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
     if configuration.leafInfo != true { isLeaf = "" }
+    
+    var test = ""
+    if let testInfo = fakeTarget.test {
+      test = """
+    \(spaces).testTarget(
+    \(spaces)\(spaces)name: "\(testInfo.name)",
+    \(spaces)\(spaces)path: "\(testInfo.path)"
+    \(spaces)),
+    """
+    }
+    
     return """
+   \(test)
    \(spaces).target(
    \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
    \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
