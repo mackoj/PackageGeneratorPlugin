@@ -349,6 +349,7 @@ struct PackageGenerator {
       last = fakeTargetToSwiftCode(parsedPackage, configuration)
       if configuration.pragmaMark == true, let linePath = URL(string: packageFolder, relativeTo: sourceCodePath) {
         if let newLastCommon = generateHeader(lastCommonPath, linePath.relativePath) {
+          outputFileHandle.write("\n".data(using: .utf8)!)
           outputFileHandle.write("// MARK: -\n".data(using: .utf8)!)
           outputFileHandle.write("// MARK: \(newLastCommon)\n".data(using: .utf8)!)
           lastCommonPath = newLastCommon
@@ -381,12 +382,12 @@ struct PackageGenerator {
     \(spaces)\(spaces)name: "\(testInfo.name)",
     \(spaces)\(spaces)path: "\(testInfo.path)"
     \(spaces)),
+
     """
     }
     
     return """
-   \(test)
-   \(spaces).target(
+   \(test)\(spaces).target(
    \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
    \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
    \(spaces))
