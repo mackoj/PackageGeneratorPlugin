@@ -1,4 +1,4 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 5.10
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -14,8 +14,8 @@ let package = Package(
   targets: [
     .binaryTarget(
       name: "package-generator-cli",
-      url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.3.0/package-generator-cli.artifactbundle.zip",
-      checksum: "a411312bd07e5234578fd460c215ef63a1799f49a7aa39ac81f8b77e708ae0de"
+      url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.3.0/0.4.1-package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
+      checksum: "8087731a742d7b834cdf33eb07ce11fcc054fb90c3b4f919b6080d54878d0dd5"
     ),
     .plugin(
       name: "Package Generator",
