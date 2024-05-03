@@ -52,7 +52,7 @@ struct PackageGenerator {
     }
     
     if config.verbose {
-      print("package-generator-cli", cliArguments.joined(separator: " "))
+      print("swift run package-generator-cli", cliArguments.map {"\""+$0+"\""}.joined(separator: " "))
     }
     
     runCli(
@@ -96,6 +96,13 @@ struct PackageGenerator {
       localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
       localDependencies.sort(by: <)
       parsedPackage.dependencies = localDependencies
+
+      localDependencies = parsedPackage.testDependencies
+      localDependencies.removeAll(where: config.exclusions.apple.contains(_:))
+      localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
+      localDependencies.sort(by: <)
+      parsedPackage.testDependencies = localDependencies
+
       parsedPackage.name = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
       if config.exclusions.targets.contains(parsedPackage.name) == false {
         parsedPackages.append(parsedPackage)
@@ -365,7 +372,13 @@ struct PackageGenerator {
     if localDependencies.isEmpty == false {
       dependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
     }
-    
+
+    let localTestDependencies = fakeTarget.testDependencies
+    var testDependencies = ""
+    if localTestDependencies.isEmpty == false {
+      testDependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localTestDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
+    }
+
     var otherParameters = ""
     if let targetParameters = configuration.targetsParameters?[fakeTarget.name], targetParameters.isEmpty == false {
       otherParameters = ",\n" + targetParameters.map { "\(spaces)\(spaces)\($0)" } .joined(separator: ",\n")
@@ -378,7 +391,7 @@ struct PackageGenerator {
     if let testInfo = fakeTarget.test {
       test = """
     \(spaces).testTarget(
-    \(spaces)\(spaces)name: "\(testInfo.name)",
+    \(spaces)\(spaces)name: "\(testInfo.name)",\(testDependencies)
     \(spaces)\(spaces)path: "\(testInfo.path)"
     \(spaces)),
     """
