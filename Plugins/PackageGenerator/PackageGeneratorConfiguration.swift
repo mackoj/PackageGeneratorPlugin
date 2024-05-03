@@ -10,6 +10,7 @@ struct PackageGeneratorConfiguration: Codable {
   var mappers: Mappers
   var verbose: Bool
   var dryRun: Bool
+  var keepTempFiles: Bool?
   var leafInfo: Bool?
   var exclusions: Exclusions
   var headerFileURL: String?
@@ -26,6 +27,7 @@ struct PackageGeneratorConfiguration: Codable {
     exclusions: Exclusions = Exclusions(),
     verbose: Bool = false,
     dryRun: Bool = true,
+    keepTempFiles: Bool = false,
     leafInfo: Bool? = nil,
     spaces: Int = 2,
     unusedThreshold: Int? = nil,
@@ -38,6 +40,7 @@ struct PackageGeneratorConfiguration: Codable {
     self.packageDirectories = packageDirectories
     self.verbose = verbose
     self.dryRun = dryRun
+    self.keepTempFiles = keepTempFiles
     self.leafInfo = leafInfo
     self.spaces = spaces
     self.unusedThreshold = unusedThreshold

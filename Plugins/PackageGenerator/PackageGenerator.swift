@@ -75,16 +75,20 @@ struct PackageGenerator {
       fatalError(.error, "Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
     }
     
-    do {
-      try FileManager.default.removeItem(at: parsedPackageFileURL)
-    } catch {
-      Diagnostics.emit(.warning, "Failed to removeItem at \(parsedPackageFileURL.path)")
-    }
-    
-    do {
-      try FileManager.default.removeItem(at: packagesFileURL)
-    } catch {
-      Diagnostics.emit(.warning, "Failed to removeItem at \(packagesFileURL.path)")
+    if config.keepTempFiles == false {
+      do {
+        try FileManager.default.removeItem(at: parsedPackageFileURL)
+      } catch {
+        Diagnostics.emit(.warning, "Failed to removeItem at \(parsedPackageFileURL.path)")
+      }
+      
+      do {
+        try FileManager.default.removeItem(at: packagesFileURL)
+      } catch {
+        Diagnostics.emit(.warning, "Failed to removeItem at \(packagesFileURL.path)")
+      }
+    } else {
+      print("Keep temp files.")
     }
     print("\(parsedPackages.count) packages found")
     
@@ -96,12 +100,6 @@ struct PackageGenerator {
       localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
       localDependencies.sort(by: <)
       parsedPackage.dependencies = localDependencies
-
-      localDependencies = parsedPackage.testDependencies
-      localDependencies.removeAll(where: config.exclusions.apple.contains(_:))
-      localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
-      localDependencies.sort(by: <)
-      parsedPackage.testDependencies = localDependencies
 
       parsedPackage.name = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
       if config.exclusions.targets.contains(parsedPackage.name) == false {
@@ -373,12 +371,6 @@ struct PackageGenerator {
       dependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
     }
 
-    let localTestDependencies = fakeTarget.testDependencies
-    var testDependencies = ""
-    if localTestDependencies.isEmpty == false {
-      testDependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localTestDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
-    }
-
     var otherParameters = ""
     if let targetParameters = configuration.targetsParameters?[fakeTarget.name], targetParameters.isEmpty == false {
       otherParameters = ",\n" + targetParameters.map { "\(spaces)\(spaces)\($0)" } .joined(separator: ",\n")
@@ -387,19 +379,8 @@ struct PackageGenerator {
     var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
     if configuration.leafInfo != true { isLeaf = "" }
     
-    var test = ""
-    if let testInfo = fakeTarget.test {
-      test = """
-    \(spaces).testTarget(
-    \(spaces)\(spaces)name: "\(testInfo.name)",\(testDependencies)
-    \(spaces)\(spaces)path: "\(testInfo.path)"
-    \(spaces)),
-    """
-    }
-    
     return """
-   \(test)
-   \(spaces).target(
+   \(spaces).\(fakeTarget.isTest ? "testTarget" : "target")(
    \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
    \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
    \(spaces))
