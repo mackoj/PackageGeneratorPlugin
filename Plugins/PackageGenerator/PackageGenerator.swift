@@ -328,6 +328,7 @@ struct PackageGenerator {
     
     var last: String = ""
     for parsedPackage in parsedPackages.sorted(by: \.name, order: <) {
+      if parsedPackage.isTest { continue }
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
       }
@@ -365,6 +366,7 @@ struct PackageGenerator {
   
   private static func fakeTargetToSwiftCode(_ fakeTarget: ParsedPackage, _ configuration: PackageGeneratorConfiguration) -> String {
     let spaces = String(repeating: " ", count: configuration.spaces)
+    let name = fakeTarget.name + (fakeTarget.isTest ? "Tests" : "")
     let localDependencies = fakeTarget.dependencies
     var dependencies = ""
     if localDependencies.isEmpty == false {
@@ -372,7 +374,7 @@ struct PackageGenerator {
     }
 
     var otherParameters = ""
-    if let targetParameters = configuration.targetsParameters?[fakeTarget.name], targetParameters.isEmpty == false {
+    if let targetParameters = configuration.targetsParameters?[name], targetParameters.isEmpty == false {
       otherParameters = ",\n" + targetParameters.map { "\(spaces)\(spaces)\($0)" } .joined(separator: ",\n")
     }
     
@@ -381,7 +383,7 @@ struct PackageGenerator {
     
     return """
    \(spaces).\(fakeTarget.isTest ? "testTarget" : "target")(
-   \(spaces)\(spaces)name: "\(fakeTarget.name)",\(isLeaf)\(dependencies)
+   \(spaces)\(spaces)name: "\(name)",\(isLeaf)\(dependencies)
    \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
    \(spaces))
    """
