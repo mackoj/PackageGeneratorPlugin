@@ -183,7 +183,11 @@ struct PackageGenerator {
     
     // Write Targets
     if config.verbose { print("Generating Targets...") }
-    generateTargets(parsedPackages, outputFileHandle, config, packageDirectory)
+    var sortedParsedPackages = parsedPackages.sorted(by: \.name, order: <)
+    if config.pragmaMark {
+      sortedParsedPackages = parsedPackages.sorted(by: (\.fullPath, order: <), (\.name, order: <))
+    }
+    generateTargets(sortedParsedPackages, outputFileHandle, config, packageDirectory)
     outputFileHandle.closeFile()
   }
   

@@ -32,4 +32,16 @@ extension Sequence {
       return order(a[keyPath: keyPath], b[keyPath: keyPath])
     }
   }
+  func sorted<T: Comparable>(by comparators: (keyPath: KeyPath<Element, T>, order: (T, T) -> Bool)...) -> [Element] {
+    return sorted { a, b in
+      for comparator in comparators {
+        if comparator.order(a[keyPath: comparator.keyPath], b[keyPath: comparator.keyPath]) {
+          return true
+        } else if comparator.order(b[keyPath: comparator.keyPath], a[keyPath: comparator.keyPath]) {
+          return false
+        }
+      }
+      return false
+    }
+  }
 }
