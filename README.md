@@ -62,6 +62,7 @@ This file contains these keys:
 - `exclusions.imports`: An array of string that represents all other SDK that should not be added as dependencies to a target
 - `exclusions.targets`: An array of string that represent all targets that should not be added in the generated `Package.swift`
 - `targetsParameters`: An dictionary that represent what custom parameter to add to a target
+- `targetTypes`: A dictionary that specifies custom target types for specific targets. Valid values are: `target`, `testTarget`, `executableTarget`, `systemLibrary`, `binaryTarget`
 - `generateExportedFiles`: A bool that represents if the generator should create `exported.swift` files in each package with `@_exported import` statements for local dependencies
 
 ```json
@@ -76,6 +77,11 @@ This file contains these keys:
   "targetsParameters": {
     "Analytics": ["exclude: [\"__Snapshots__\"]", "resources: [.copy(\"Fonts/\")]"],
     "target2": ["resources: [.copy(\"Dictionaries/\")]"]
+  },
+  "targetTypes": {
+    "MyApp": "executableTarget",
+    "SystemWrapper": "systemLibrary",
+    "PrecompiledFramework": "binaryTarget"
   },
   "verbose": false,
   "pragmaMark": false,

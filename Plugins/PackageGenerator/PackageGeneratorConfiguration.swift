@@ -16,6 +16,7 @@ struct PackageGeneratorConfiguration: Codable {
   var headerFileURL: String?
   var packageDirectories: [PackageInformation]
   var targetsParameters: [String: [String]]?
+  var targetTypes: [String: String]?
   var spaces: Int
   var unusedThreshold: Int?
   var pragmaMark: Bool
@@ -34,6 +35,7 @@ struct PackageGeneratorConfiguration: Codable {
     unusedThreshold: Int? = nil,
     pragmaMark: Bool = false,
     targetsParameters: [String: [String]]? = nil,
+    targetTypes: [String: String]? = nil,
     generateExportedFiles: Bool = false
   ) {
     self.mappers = mappers
@@ -48,6 +50,7 @@ struct PackageGeneratorConfiguration: Codable {
     self.unusedThreshold = unusedThreshold
     self.pragmaMark = pragmaMark
     self.targetsParameters = targetsParameters
+    self.targetTypes = targetTypes
     self.generateExportedFiles = generateExportedFiles
   }
   
