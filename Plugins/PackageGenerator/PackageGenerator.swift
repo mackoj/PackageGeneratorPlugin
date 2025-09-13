@@ -93,22 +93,38 @@ struct PackageGenerator {
     print("\(parsedPackages.count) packages found")
     
     // Clean packages
-    parsedPackages = parsedPackages.map { parsedPackage in
-      var parsedPackage = parsedPackage
-      var localDependencies = parsedPackage.dependencies
+    var cleanedPackages: [ParsedPackage] = []
+    for parsedPackage in parsedPackages {
+      var processedPackage = parsedPackage
+      var localDependencies = processedPackage.dependencies
       localDependencies.removeAll(where: config.exclusions.apple.contains(_:))
       localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
       localDependencies.sort(by: <)
-      parsedPackage.dependencies = localDependencies
+      processedPackage.dependencies = localDependencies
 
-      parsedPackage.name = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
-      if config.exclusions.targets.contains(parsedPackage.name) == false {
-        parsedPackages.append(parsedPackage)
-      } else {
-        Diagnostics.emit(.warning, "❌ Rejecting: \(parsedPackage)")
+      processedPackage.name = config.mappers.targets[processedPackage.path, default: processedPackage.name]
+      
+      // Apply target type overrides from configuration
+      if let targetTypes = config.targetTypes,
+         let targetTypeString = targetTypes[processedPackage.name],
+         let targetType = TargetType(rawValue: targetTypeString) {
+        processedPackage.targetType = targetType
+      } else if !processedPackage.isTest {
+        // Auto-detect executable targets by checking for main.swift file
+        let sourcePath = packageDirectory.appendingPathComponent(processedPackage.path)
+        let mainSwiftPath = sourcePath.appendingPathComponent("main.swift")
+        if FileManager.default.fileExists(atPath: mainSwiftPath.path) {
+          processedPackage.targetType = .executableTarget
+        }
       }
-      return parsedPackage
+      
+      if config.exclusions.targets.contains(processedPackage.name) == false {
+        cleanedPackages.append(processedPackage)
+      } else {
+        Diagnostics.emit(.warning, "❌ Rejecting: \(processedPackage)")
+      }
     }
+    parsedPackages = cleanedPackages
     
     // UpdateIsLeaf
     if config.leafInfo == true {
@@ -120,6 +136,26 @@ struct PackageGenerator {
       updateIsUnsused(config, parsedPackages)
     }
     
+    if let targetTypes = config.targetTypes?.keys, targetTypes.isEmpty == false {
+      let tTypes = Set(targetTypes)
+      let parsedPackagesNames = parsedPackages.map(\.name)
+      let toRemove = tTypes.subtracting(parsedPackagesNames)
+      if toRemove.isEmpty == false {
+        for targetToRemove in toRemove {
+          Diagnostics.warning("🗑️ Please consider removing \"\(targetToRemove)\" from targetTypes configuration because this target is not found")
+        }
+      }
+      
+      // Validate target type values
+      if let targetTypeConfigs = config.targetTypes {
+        for (targetName, targetTypeString) in targetTypeConfigs {
+          if TargetType(rawValue: targetTypeString) == nil {
+            Diagnostics.warning("⚠️ Invalid target type '\(targetTypeString)' for target '\(targetName)'. Valid types are: target, testTarget, executableTarget, systemLibrary, binaryTarget")
+          }
+        }
+      }
+    }
+
     if let targetNames = config.targetsParameters?.keys, targetNames.isEmpty == false {
       let tNames = Set(targetNames)
       let parsedPackagesNames = parsedPackages.map(\.name)
@@ -338,13 +374,24 @@ struct PackageGenerator {
     
     var last: String = ""
     for parsedPackage in parsedPackages.sorted(by: \.name, order: <) {
-      if parsedPackage.isTest { continue }
+      // Skip test targets, system libraries, and binary targets for products
+      if parsedPackage.isTest || parsedPackage.targetType == .systemLibrary || parsedPackage.targetType == .binaryTarget { continue }
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
       }
       let name = configuration.mappers.targets[parsedPackage.path, default: parsedPackage.name]
       let spaces = String(repeating: " ", count: configuration.spaces)
-      last = "\(spaces).library(name: \"" + name + "\", targets: [\"" + name + "\"])"
+      
+      // Generate appropriate product type
+      let productType: String
+      switch parsedPackage.targetType {
+      case .executableTarget:
+        productType = "executable"
+      default:
+        productType = "library"
+      }
+      
+      last = "\(spaces).\(productType)(name: \"" + name + "\", targets: [\"" + name + "\"])"
     }
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
@@ -391,8 +438,23 @@ struct PackageGenerator {
     var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
     if configuration.leafInfo != true { isLeaf = "" }
     
+    // Determine the target type to generate
+    let targetTypeString: String
+    switch fakeTarget.targetType {
+    case .target:
+      targetTypeString = "target"
+    case .testTarget:
+      targetTypeString = "testTarget"
+    case .executableTarget:
+      targetTypeString = "executableTarget"
+    case .systemLibrary:
+      targetTypeString = "systemLibrary"
+    case .binaryTarget:
+      targetTypeString = "binaryTarget"
+    }
+    
     return """
-   \(spaces).\(fakeTarget.isTest ? "testTarget" : "target")(
+   \(spaces).\(targetTypeString)(
    \(spaces)\(spaces)name: "\(name)",\(isLeaf)\(dependencies)
    \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
    \(spaces))
