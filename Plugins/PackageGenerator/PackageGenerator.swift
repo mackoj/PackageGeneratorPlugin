@@ -419,7 +419,7 @@ struct PackageGenerator {
   
   // MARK: - Generate Exported Files
   private static func generateExportedFiles(_ parsedPackages: [ParsedPackage], _ configuration: PackageGeneratorConfiguration, _ packageDirectory: URL) {
-    let sourcesDirectory = packageDirectory.appendingPathComponent("Sources")
+    let sourcesDirectory = packageDirectory
     
     for parsedPackage in parsedPackages {
       // Skip test targets
@@ -458,7 +458,9 @@ struct PackageGenerator {
       do {
         try exportedContent.write(to: finalExportedFileURL, atomically: true, encoding: .utf8)
         if configuration.verbose {
-          print("Generated \(fileName) for \(parsedPackage.name) with \(sortedDependencies.count) dependencies")
+          print(
+            "Generated \(fileName) for \(parsedPackage.name) with \(sortedDependencies.count) dependencies."
+          )
         }
       } catch {
         Diagnostics.emit(.warning, "Failed to write \(fileName) for package \(parsedPackage.name): \(error)")
