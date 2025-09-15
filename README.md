@@ -63,6 +63,7 @@ This file contains these keys:
 - `exclusions.targets`: An array of string that represent all targets that should not be added in the generated `Package.swift`
 - `targetsParameters`: An dictionary that represent what custom parameter to add to a target
 - `generateExportedFiles`: A bool that represents if the generator should create `exported.swift` files in each package with `@_exported import` statements for local dependencies
+- `exportedFilesRelativePath`: An optional string that specifies a relative path within each package where the `exported.swift` files should be placed. If not specified, files are placed in the package root directory.
 
 ```json
 {
@@ -82,6 +83,7 @@ This file contains these keys:
   "spaces": 2,
   "dryRun": true,
   "generateExportedFiles": false,
+  "exportedFilesRelativePath": "Generated",
   "mappers": {
     "targets": {
       "Sources/App/Helpers/Foundation/": "FoundationHelpers",
@@ -177,6 +179,15 @@ For example, if package `MyPackage1` depends on `Chip` and `Logger`, the generat
 ```
 
 In dry run mode, the files will be named `exported_generated.swift` to allow you to review the output before enabling the feature.
+
+#### Exported Files Relative Path
+
+You can customize where the exported files are placed within each package by setting the `exportedFilesRelativePath` parameter. This allows for better organization of your generated files.
+
+- If not specified (or `null`), exported files are placed directly in each package's root directory
+- If specified (e.g., `"Generated"`), exported files are placed in the specified subdirectory within each package
+
+For example, with `"exportedFilesRelativePath": "Generated"`, the exported.swift file for a package at `Sources/MyPackage/` would be created at `Sources/MyPackage/Generated/exported.swift`.
 
 ## CI
 
