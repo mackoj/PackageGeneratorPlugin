@@ -429,7 +429,6 @@ struct PackageGenerator {
       if parsedPackage.dependencies.isEmpty { continue }
       
       let packagePath = sourcesDirectory.appendingPathComponent(parsedPackage.path)
-      let exportedFileURL = packagePath.appendingPathComponent("exported.swift")
       
       // Create the package directory if it doesn't exist
       do {
@@ -456,11 +455,12 @@ struct PackageGenerator {
       let finalExportedFileURL = packagePath.appendingPathComponent(fileName)
       
       do {
+        if FileManager.default.fileExists(atPath: finalExportedFileURL.path) {
+          try FileManager.default.removeItem(at: finalExportedFileURL)
+        }
         try exportedContent.write(to: finalExportedFileURL, atomically: true, encoding: .utf8)
         if configuration.verbose {
-          print(
-            "Generated \(fileName) for \(parsedPackage.name) with \(sortedDependencies.count) dependencies."
-          )
+          print("Generated \(fileName) for \(parsedPackage.name) with \(sortedDependencies.count) dependencies.")
         }
       } catch {
         Diagnostics.emit(.warning, "Failed to write \(fileName) for package \(parsedPackage.name): \(error)")
