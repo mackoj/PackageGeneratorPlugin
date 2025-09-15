@@ -428,7 +428,12 @@ struct PackageGenerator {
       // Only generate exported.swift for packages that have local dependencies
       if parsedPackage.dependencies.isEmpty { continue }
       
-      let packagePath = sourcesDirectory.appendingPathComponent(parsedPackage.path)
+      var packagePath = sourcesDirectory.appendingPathComponent(parsedPackage.path)
+      
+      // Append the relative path if provided
+      if let relativePath = configuration.exportedFilesRelativePath, !relativePath.isEmpty {
+        packagePath = packagePath.appendingPathComponent(relativePath)
+      }
       
       // Create the package directory if it doesn't exist
       do {
