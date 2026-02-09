@@ -1,15 +1,22 @@
 import Foundation
 import PackagePlugin
 
+// MARK: - Plugin Entry Point
+
+/// The main plugin entry point
+/// This is the "imperative shell" - it sets up dependencies and delegates to the workflow
 @main
 struct PackageGeneratorPlugin: CommandPlugin {
-  func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
-    PackageGenerator.generate(context, arguments)
-    Diagnostics.emit(.remark, "PackageGenerator has finished")
+  func performCommand(
+    context: PackagePlugin.PluginContext,
+    arguments: [String]
+  ) async throws {
+    // Set up live dependencies
+    try withDependencies {
+      $0 = .live(context: context)
+    } operation: {
+      let workflow = PluginWorkflow(context: context)
+      try workflow.execute(arguments: arguments)
+    }
   }
-}
-
-func fatalError(_ severity: PackagePlugin.Diagnostics.Severity, _ description: String, file: StaticString = #file, line: UInt = #line) -> Never {
-  Diagnostics.emit(severity, description)
-  fatalError(file: file, line: line)
 }
