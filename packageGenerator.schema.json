@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PackageGenerator Configuration",
+  "description": "Configuration schema for the PackageGenerator Swift Package Manager plugin",
+  "type": "object",
+  "required": ["source"],
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": ["packageDirectories", "headerFile"],
+      "properties": {
+        "packageDirectories": {
+          "type": "array",
+          "description": "List of package directories to scan for Swift files",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Simple path to package directory"
+              },
+              {
+                "type": "object",
+                "required": ["target"],
+                "properties": {
+                  "target": {
+                    "type": "object",
+                    "required": ["path", "name"],
+                    "properties": {
+                      "path": { "type": "string" },
+                      "name": { "type": "string" }
+                    }
+                  },
+                  "test": {
+                    "type": "object",
+                    "required": ["path", "name"],
+                    "properties": {
+                      "path": { "type": "string" },
+                      "name": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "headerFile": {
+          "type": "string",
+          "description": "Path to header file to prepend to generated Package.swift"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["dryRun", "dry-run", "live"],
+              "description": "Output mode: dryRun creates Package_generated.swift, live overwrites Package.swift"
+            },
+            {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["dryRun", "dry-run", "live"]
+                },
+                "fileName": {
+                  "type": "string",
+                  "description": "Custom output filename"
+                }
+              }
+            }
+          ]
+        },
+        "formatting": {
+          "type": "object",
+          "properties": {
+            "indentation": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Number of spaces for indentation"
+                },
+                {
+                  "type": "object",
+                  "required": ["type"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["spaces", "tabs"]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "pragmaMarks": {
+              "type": "boolean",
+              "description": "Add // MARK: comments to organize targets by path"
+            }
+          }
+        }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "properties": {
+        "targets": {
+          "type": "object",
+          "description": "Map directory paths to target names",
+          "additionalProperties": { "type": "string" }
+        },
+        "imports": {
+          "type": "object",
+          "description": "Map import names to SPM product declarations",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "required": ["product", "package"],
+                "properties": {
+                  "product": { "type": "string" },
+                  "package": { "type": "string" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "properties": {
+        "apple": {
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "default",
+              "description": "Use default list of Apple SDKs"
+            },
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Custom list of Apple SDKs to exclude"
+            }
+          ]
+        },
+        "imports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Third-party imports to exclude from dependencies"
+        },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Target names to exclude from Package.swift"
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "exportedFiles": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "relativePath": {
+                  "oneOf": [
+                    { "type": "null" },
+                    { "type": "string" }
+                  ],
+                  "description": "Relative path within package for exported.swift files"
+                }
+              }
+            }
+          ]
+        },
+        "leafInfo": {
+          "type": "boolean",
+          "description": "Add dependency count comments to targets"
+        },
+        "unusedThreshold": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": 0 }
+          ],
+          "description": "Report packages used fewer than this many times"
+        },
+        "keepTempFiles": {
+          "type": "boolean",
+          "description": "Keep temporary files for debugging"
+        },
+        "targetParameters": {
+          "type": "object",
+          "description": "Additional parameters per target",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "verbose": {
+      "type": "boolean",
+      "description": "Enable verbose logging"
+    }
+  }
+}

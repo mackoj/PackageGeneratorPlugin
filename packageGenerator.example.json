@@ -1,0 +1,50 @@
+{
+  "$schema": "./packageGenerator.schema.json",
+  "source": {
+    "packageDirectories": [
+      "Sources/App/Clients/Analytics",
+      "Sources/App/Clients/AnalyticsLive",
+      "Sources/App/Daemons/Notification",
+      "Sources/App/Helpers/Foundation"
+    ],
+    "headerFile": "header.swift"
+  },
+  "output": {
+    "mode": "dryRun",
+    "formatting": {
+      "indentation": 2,
+      "pragmaMarks": false
+    }
+  },
+  "mapping": {
+    "targets": {
+      "Sources/App/Helpers/Foundation/": "FoundationHelpers"
+    },
+    "imports": {
+      "ComposableArchitecture": {
+        "product": "ComposableArchitecture",
+        "package": "swift-composable-architecture"
+      }
+    }
+  },
+  "exclusion": {
+    "apple": "default",
+    "imports": ["PurchasesCoreSwift"],
+    "targets": ["ParserCLI"]
+  },
+  "features": {
+    "exportedFiles": {
+      "relativePath": "Generated"
+    },
+    "leafInfo": false,
+    "unusedThreshold": null,
+    "keepTempFiles": false,
+    "targetParameters": {
+      "Analytics": [
+        "exclude: [\"__Snapshots__\"]",
+        "resources: [.copy(\"Fonts/\")]"
+      ]
+    }
+  },
+  "verbose": false
+}
