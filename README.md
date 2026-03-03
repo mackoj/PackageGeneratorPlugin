@@ -58,12 +58,14 @@ This file contains these keys:
 - `mappers.targets`: An dictionary that handles target renaming the key represents a target `path` with the `/` and the value represents the name to apply. For example in the `packageDirectories` I have `Sources/App/Helpers/Foundation` but in my code, I import `FoundationHelpers`.
 - `mappers.imports`: An dictionary that represents how to map import that requires a `.product` in SPM for example `ComposableArchitecture` require to be called `.product(name: "ComposableArchitecture", package: "swift-composable-architecture")` in a `Package.swift`.
 - `exclusions`: An object that represents all imports that should not be added as dependencies to a target or targets in the generated `Package.swift`
-- `exclusions.apple`: An array of string that represents all Apple SDK that should not be add as dependencies to a target
+- `exclusions.apple`: An array of strings for extra Apple SDKs you want to exclude. A comprehensive list of Apple frameworks is already filtered by default (see `Plugins/PackageGenerator/AppleSDKs.swift`), so this only needs to contain anything beyond those defaults.
 - `exclusions.imports`: An array of string that represents all other SDK that should not be added as dependencies to a target
 - `exclusions.targets`: An array of string that represent all targets that should not be added in the generated `Package.swift`
 - `targetsParameters`: An dictionary that represent what custom parameter to add to a target
 - `generateExportedFiles`: A bool that represents if the generator should create `exported.swift` files in each package with `@_exported import` statements for local dependencies
 - `exportedFilesRelativePath`: An optional string that specifies a relative path within each package where the `exported.swift` files should be placed. If not specified, files are placed in the package root directory.
+
+Apple frameworks defined in `Plugins/PackageGenerator/AppleSDKs.swift` are excluded automatically, so you only need to add entries to `exclusions.apple` if you want to append additional Apple SDKs that are not already covered.
 
 ```json
 {
@@ -94,8 +96,7 @@ This file contains these keys:
   },
   "exclusions": {
     "apple": [
-      "ARKit",
-      "AVFoundation"
+      "CustomAppleFramework"
     ],
     "imports": [
       "PurchasesCoreSwift"

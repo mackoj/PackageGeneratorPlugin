@@ -59,9 +59,12 @@ struct PackageGeneratorConfiguration: Codable {
     var imports: [String]
     var targets: [String]
     var apple: [String]
-    
-    
-    init(apple: [String] = appleDefaultSDKs, imports: [String] = [], targets: [String] = []) {
+
+    var resolvedAppleExclusions: Set<String> {
+      Set(appleDefaultSDKs + apple)
+    }
+
+    init(apple: [String] = [], imports: [String] = [], targets: [String] = []) {
       self.imports = imports
       self.targets = targets
       self.apple = apple

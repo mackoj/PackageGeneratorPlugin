@@ -93,11 +93,13 @@ struct PackageGenerator {
     print("\(parsedPackages.count) packages found")
     
     // Clean packages
+    let appleExclusions = config.exclusions.resolvedAppleExclusions
+    let importExclusions = Set(config.exclusions.imports)
     parsedPackages = parsedPackages.map { parsedPackage in
       var parsedPackage = parsedPackage
       var localDependencies = parsedPackage.dependencies
-      localDependencies.removeAll(where: config.exclusions.apple.contains(_:))
-      localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
+      localDependencies.removeAll(where: appleExclusions.contains(_:))
+      localDependencies.removeAll(where: importExclusions.contains(_:))
       localDependencies.sort(by: <)
       parsedPackage.dependencies = localDependencies
 
