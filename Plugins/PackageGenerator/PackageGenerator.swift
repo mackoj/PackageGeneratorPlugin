@@ -21,16 +21,14 @@ struct PackageGenerator {
     let config = loadConfiguration(configurationFileURL)
     validateConfiguration(config, configurationFileURL)
     
-    if config.verbose { print(toolConfig) }
+    logVerbose("Tool configuration: \(toolConfig)", config)
     
     /// Generate ParsedPackage
     let parsedPackageFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
     let packagesFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
     
-    if config.verbose {
-      print("packagesFileURL:", packagesFileURL.path)
-      print("parsedPackageFileURL:", parsedPackageFileURL.path)
-    }
+    logVerbose("packagesFileURL: \(packagesFileURL.path)", config)
+    logVerbose("parsedPackageFileURL: \(parsedPackageFileURL.path)", config)
     do {
       let packageDirectoriesData = try JSONEncoder().encode(config.packageDirectories)
       try packageDirectoriesData.write(to: packagesFileURL, options: [.atomic])
@@ -51,9 +49,7 @@ struct PackageGenerator {
       cliArguments.append("--verbose")
     }
     
-    if config.verbose {
-      print("swift run package-generator-cli", cliArguments.map {"\""+$0+"\""}.joined(separator: " "))
-    }
+    logVerbose("swift run package-generator-cli \(cliArguments.map { "\""+$0+"\"" }.joined(separator: " "))", config)
     
     runCli(
       context: context,
@@ -88,20 +84,30 @@ struct PackageGenerator {
         Diagnostics.emit(.warning, "Failed to removeItem at \(packagesFileURL.path)")
       }
     } else {
-      print("Keep temp files.")
+      logInfo("Keeping temporary files due to configuration.")
     }
-    print("\(parsedPackages.count) packages found")
+    logInfo("Parsed \(parsedPackages.count) packages from package-generator-cli output.")
     
     // Clean packages
+    let appleExclusions = config.exclusions.resolvedAppleExclusions
+    let importExclusions = Set(config.exclusions.imports)
     parsedPackages = parsedPackages.map { parsedPackage in
       var parsedPackage = parsedPackage
       var localDependencies = parsedPackage.dependencies
-      localDependencies.removeAll(where: config.exclusions.apple.contains(_:))
-      localDependencies.removeAll(where: config.exclusions.imports.contains(_:))
+      localDependencies.removeAll(where: appleExclusions.contains(_:))
+      localDependencies.removeAll(where: importExclusions.contains(_:))
       localDependencies.sort(by: <)
-      parsedPackage.dependencies = localDependencies
 
-      parsedPackage.name = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
+      let mappedName = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
+      let candidateNamesToFilter = Set([parsedPackage.name, mappedName])
+      let removedSelfImports = localDependencies.filter { candidateNamesToFilter.contains($0) }
+      if removedSelfImports.isEmpty == false {
+        localDependencies.removeAll(where: { candidateNamesToFilter.contains($0) })
+        logWarning("Filtered self-import(s) \(Array(Set(removedSelfImports))) for \"\(mappedName)\" at \(parsedPackage.path)")
+      }
+
+      parsedPackage.dependencies = localDependencies
+      parsedPackage.name = mappedName
       if config.exclusions.targets.contains(parsedPackage.name) == false {
         parsedPackages.append(parsedPackage)
       } else {
@@ -112,7 +118,7 @@ struct PackageGenerator {
     
     // UpdateIsLeaf
     if config.leafInfo == true {
-      if config.verbose { print("Update leaf status in Packages...") }
+      logVerbose("Update leaf status in Packages...", config)
       parsedPackages = updateIsLeaf(config, parsedPackages)
     }
     
@@ -131,11 +137,15 @@ struct PackageGenerator {
       }
     }
 
-    if config.verbose { for parsedPackage in parsedPackages { print(parsedPackage) } }
+    if config.verbose {
+      for parsedPackage in parsedPackages {
+        logVerbose("Parsed package: \(parsedPackage)", config)
+      }
+    }
     
     // Write Package.swift
     let outputFileName = config.dryRun ? "Package_generated.swift" : "Package.swift"
-    if config.verbose { print("Preparing \(outputFileName)...") }
+    logVerbose("Preparing \(outputFileName)...", config)
     let outputURL = packageDirectory.appendingPathComponent(outputFileName)
     if FileManager.default.fileExists(atPath: outputURL.path) {
       do {
@@ -149,7 +159,7 @@ struct PackageGenerator {
       FileManager.default.createFile(atPath: outputURL.path, contents: nil)
     }
     
-    if config.verbose { print("Generating \(outputFileName)...") }
+    logVerbose("Generating \(outputFileName)...", config)
     
     // Filling
     var outputFileHandle: FileHandle!
@@ -174,15 +184,16 @@ struct PackageGenerator {
     }
     
     outputFileHandle.write(headerData)
-    outputFileHandle.write("// MARK: - Generated \(parsedPackages.count) packages\n\n".data(using: .utf8)!)
+    let generatedLibraryCount = parsedPackages.filter { parsedPackage in !parsedPackage.isTest }.count
+    outputFileHandle.write("// MARK: - Generated \(generatedLibraryCount) packages\n\n".data(using: .utf8)!)
     
     // Write Products
-    if config.verbose { print("Generating Products...") }
+    logVerbose("Generating Products...", config)
     generateProducts(parsedPackages, outputFileHandle, config)
     outputFileHandle.write("\n".data(using: .utf8)!)
     
     // Write Targets
-    if config.verbose { print("Generating Targets...") }
+    logVerbose("Generating Targets...", config)
     var sortedParsedPackages = parsedPackages.sorted(by: \.name, order: <)
     if config.pragmaMark {
       sortedParsedPackages = parsedPackages.sorted(by: (\.fullPath, order: <), (\.name, order: <))
@@ -192,7 +203,7 @@ struct PackageGenerator {
     
     // Generate exported.swift files if enabled
     if config.generateExportedFiles {
-      if config.verbose { print("Generating exported.swift files...") }
+      logVerbose("Generating exported.swift files...", config)
       generateExportedFiles(parsedPackages, config, packageDirectory)
     }
   }
@@ -283,7 +294,7 @@ struct PackageGenerator {
       fatalError(.error, "Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
     }
     
-    if config.verbose { print(config) }
+    logVerbose("Configuration: \(config)", config)
     return config
   }
   
@@ -308,7 +319,7 @@ struct PackageGenerator {
         }
       }
       if usedCount <= unusedThreshold {
-        print("📦 \(name) is used \(usedCount) times")
+        logInfo("📦 \(name) is used \(usedCount) times")
       }
     }
   }
@@ -464,12 +475,24 @@ struct PackageGenerator {
           try FileManager.default.removeItem(at: finalExportedFileURL)
         }
         try exportedContent.write(to: finalExportedFileURL, atomically: true, encoding: .utf8)
-        if configuration.verbose {
-          print("Generated \(fileName) for \(parsedPackage.name) with \(sortedDependencies.count) dependencies.")
-        }
+        logVerbose("Generated \(fileName) for \(parsedPackage.name) with \(sortedDependencies.count) dependencies.", configuration)
       } catch {
         Diagnostics.emit(.warning, "Failed to write \(fileName) for package \(parsedPackage.name): \(error)")
       }
     }
+  }
+
+  private static func logInfo(_ message: String) {
+    print("[PackageGenerator] \(message)")
+  }
+
+  private static func logVerbose(_ message: String, _ configuration: PackageGeneratorConfiguration) {
+    if configuration.verbose {
+      logInfo(message)
+    }
+  }
+
+  private static func logWarning(_ message: String) {
+    print("[PackageGenerator WARNING] \(message)")
   }
 }
