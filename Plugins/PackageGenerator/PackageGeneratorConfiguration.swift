@@ -14,7 +14,7 @@ struct PackageGeneratorConfiguration: Codable {
   var leafInfo: Bool?
   var exclusions: Exclusions
   var headerFileURL: String?
-  var packageDirectories: [PackageInformation]
+  var packageDirectories: [PackageDirectoryEntry]
   var packageDirectoryTargets: [PackageDirectoryTargets]
   var targetsParameters: [String: [String]]?
   var spaces: Int
@@ -25,7 +25,7 @@ struct PackageGeneratorConfiguration: Codable {
 
   init(
     headerFileURL: String? = nil,
-    packageDirectories: [PackageInformation] = [],
+    packageDirectories: [PackageDirectoryEntry] = [],
     packageDirectoryTargets: [PackageDirectoryTargets] = [],
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions(),
@@ -84,7 +84,7 @@ struct PackageGeneratorConfiguration: Codable {
     self.leafInfo = try container.decodeIfPresent(Bool.self, forKey: .leafInfo)
     self.exclusions = try container.decodeIfPresent(Exclusions.self, forKey: .exclusions) ?? Exclusions()
     self.headerFileURL = try container.decodeIfPresent(String.self, forKey: .headerFileURL)
-    self.packageDirectories = try container.decodeIfPresent([PackageInformation].self, forKey: .packageDirectories) ?? []
+    self.packageDirectories = try container.decodeIfPresent([PackageDirectoryEntry].self, forKey: .packageDirectories) ?? []
     self.packageDirectoryTargets = try container.decodeIfPresent([PackageDirectoryTargets].self, forKey: .packageDirectoryTargets) ?? []
     self.targetsParameters = try container.decodeIfPresent([String: [String]].self, forKey: .targetsParameters)
     self.spaces = try container.decodeIfPresent(Int.self, forKey: .spaces) ?? 2
@@ -93,7 +93,7 @@ struct PackageGeneratorConfiguration: Codable {
     self.generateExportedFiles = try container.decodeIfPresent(Bool.self, forKey: .generateExportedFiles) ?? false
     self.exportedFilesRelativePath = try container.decodeIfPresent(String.self, forKey: .exportedFilesRelativePath)
   }
-  
+
   // MARK: - Exclusions
   struct Exclusions: Codable {
     var imports: [String]
@@ -142,6 +142,7 @@ struct PackageGeneratorConfiguration: Codable {
       let type: TargetType
       let path: String?
       let regularTargetName: String?
+      let exclude: [String]?
     }
 
     let path: String
@@ -149,8 +150,12 @@ struct PackageGeneratorConfiguration: Codable {
 
     func targetPath(for target: Target) -> String {
       if let override = target.path, override.isEmpty == false {
-        return override
+        if override.hasPrefix("/") {
+          return override
+        }
+        return (path as NSString).appendingPathComponent(override)
       }
+
       let folder = target.type.defaultFolder
       let base = (path as NSString).appendingPathComponent(folder)
       return (base as NSString).appendingPathComponent(target.name)
@@ -166,13 +171,45 @@ struct PackageGeneratorConfiguration: Codable {
       return String(testTarget.name.dropLast(suffix.count))
     }
   }
+
+  enum PackageDirectoryEntry: Codable {
+    case legacy(PackageInformation)
+    case directoryTargets(PackageDirectoryTargets)
+
+    var packageInformations: [PackageInformation] {
+      switch self {
+      case .legacy(let info):
+        return [info]
+      case .directoryTargets(let targets):
+        return targets.packageInformations()
+      }
+    }
+
+    init(from decoder: Decoder) throws {
+      if let targets = try? PackageDirectoryTargets(from: decoder) {
+        self = .directoryTargets(targets)
+        return
+      }
+      let info = try PackageInformation(from: decoder)
+      self = .legacy(info)
+    }
+
+    func encode(to encoder: Encoder) throws {
+      switch self {
+      case .legacy(let info):
+        try info.encode(to: encoder)
+      case .directoryTargets(let targets):
+        try targets.encode(to: encoder)
+      }
+    }
+  }
 }
 
 let defaultUnusedThreshold = 1
 
 extension PackageGeneratorConfiguration {
   var resolvedPackageDirectories: [PackageInformation] {
-    var directories = packageDirectories
+    var directories = packageDirectories.flatMap { $0.packageInformations }
     directories.append(contentsOf: packageDirectoryTargets.flatMap { $0.packageInformations() })
     return directories
   }
@@ -192,12 +229,14 @@ extension PackageGeneratorConfiguration.PackageDirectoryTargets {
       .map { regular -> PackageInformation in
         let targetInfo = PackageInformation.PathInfo(
           path: targetPath(for: regular),
-          name: regular.name
+          name: regular.name,
+          exclude: regular.exclude
         )
         let testInfo = mappedTests[regular.name].map { test -> PackageInformation.PathInfo in
           PackageInformation.PathInfo(
             path: targetPath(for: test),
-            name: test.name
+            name: test.name,
+            exclude: test.exclude
           )
         }
         return PackageInformation(target: targetInfo, test: testInfo)

@@ -4,6 +4,7 @@ public struct PackageInformation: Codable {
   public struct PathInfo: Codable {
     public let path: String
     public let name: String
+    public let exclude: [String]?
   }
   public let test: PathInfo?
   public let target: PathInfo
@@ -13,12 +14,17 @@ public struct PackageInformation: Codable {
     self.test = test
   }
 
+  enum CodingKeys: CodingKey {
+    case target
+    case test
+  }
+
   public init(from decoder: any Decoder) throws {
     // Legacy Parser
     let stringContainer = try decoder.singleValueContainer()
     if let pathString = try? stringContainer.decode(String.self) {
       let path = URL(fileURLWithPath: pathString)
-      self.target = PathInfo(path: pathString, name: path.lastPathComponent)
+      self.target = PathInfo(path: pathString, name: path.lastPathComponent, exclude: nil)
       self.test = nil
       return
     }

@@ -20,6 +20,21 @@ struct PackageGenerator {
     }
     let config = loadConfiguration(configurationFileURL)
     let resolvedPackageDirectories = config.resolvedPackageDirectories
+    let normalizedPath: (String) -> String = { rawPath in
+      let url: FileURL
+      if rawPath.hasPrefix("/") {
+        url = FileURL(fileURLWithPath: rawPath)
+      } else {
+        url = packageDirectory.appendingPathComponent(rawPath)
+      }
+      return url.standardized.path
+    }
+    let excludesByPath = resolvedPackageDirectories.reduce(into: [String: [String]]()) { acc, info in
+      acc[normalizedPath(info.target.path)] = info.target.exclude ?? []
+      if let testInfo = info.test {
+        acc[normalizedPath(testInfo.path)] = testInfo.exclude ?? []
+      }
+    }
     validateConfiguration(config, configurationFileURL)
     
     logVerbose("Tool configuration: \(toolConfig)", config)
@@ -70,6 +85,14 @@ struct PackageGenerator {
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
     } catch {
       fatalError(.error, "Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
+    }
+    parsedPackages = parsedPackages.map { parsedPackage in
+      var parsedPackage = parsedPackage
+      let normalizedFullPath = FileURL(fileURLWithPath: parsedPackage.fullPath).standardized.path
+      if let excludes = excludesByPath[normalizedFullPath] {
+        parsedPackage.exclude = excludes
+      }
+      return parsedPackage
     }
     
     if config.keepTempFiles == false {
@@ -395,9 +418,33 @@ struct PackageGenerator {
       dependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
     }
 
+    let targetParametersList = configuration.targetsParameters?[name] ?? []
+    var remainingParameters: [String] = []
+    var parameterExcludes: [String] = []
+    for parameter in targetParametersList {
+      let trimmed = parameter.trimmingCharacters(in: .whitespacesAndNewlines)
+      if trimmed.hasPrefix("exclude") {
+        if let parsed = parseExcludeValues(from: trimmed) {
+          parameterExcludes.append(contentsOf: parsed)
+        }
+        continue
+      }
+      remainingParameters.append(parameter)
+    }
+    let combinedExcludes = Set(fakeTarget.exclude + parameterExcludes).sorted(by: <)
     var otherParameters = ""
-    if let targetParameters = configuration.targetsParameters?[name], targetParameters.isEmpty == false {
-      otherParameters = ",\n" + targetParameters.map { "\(spaces)\(spaces)\($0)" } .joined(separator: ",\n")
+    if combinedExcludes.isEmpty == false {
+      let formatted = combinedExcludes
+        .map { "\(spaces)\(spaces)\(spaces)\"\($0)\"" }
+        .joined(separator: ",\n")
+      otherParameters += """
+,\n\(spaces)\(spaces)exclude: [
+\(formatted)
+\(spaces)\(spaces)]
+"""
+    }
+    if remainingParameters.isEmpty == false {
+      otherParameters += ",\n" + remainingParameters.map { "\(spaces)\(spaces)\($0)" }.joined(separator: ",\n")
     }
     
     var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
@@ -427,6 +474,25 @@ struct PackageGenerator {
     
     if lastCommon != futureLastCommon { return futureLastCommon }
     return nil
+  }
+
+  private static func parseExcludeValues(from parameter: String) -> [String]? {
+    guard let start = parameter.firstIndex(of: "["),
+          let end = parameter.lastIndex(of: "]"),
+          start < end else {
+      return nil
+    }
+
+    let substring = parameter[start...end]
+    guard let data = substring.data(using: .utf8) else {
+      return nil
+    }
+
+    do {
+      return try JSONDecoder().decode([String].self, from: data)
+    } catch {
+      return nil
+    }
   }
   
   // MARK: - Generate Exported Files

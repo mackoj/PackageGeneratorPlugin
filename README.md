@@ -49,7 +49,7 @@ _By default to prevent any surprise it will do a dry-run(not modifying your `Pac
 
 To use it you have to set a configuration file at the root of your project named `packageGenerator.json`.
 This file contains these keys:
-- `packageDirectories`: An array of string that represents where the modules are
+- `packageDirectories`: An array where each entry can either be a legacy string/object describing a single target or a new object mirroring the CLI `result.json` (containing `path` plus a `targets` array). Each target entry may specify `name`, `type`, optionally `path`, and optionally `exclude`, which the plugin will honor when generating `Package.swift`.
 - `packageDirectoryTargets`: An array of objects that describe directories and the targets they contain. Each entry has a `path` and a `targets` array of objects (`name`, `type` equals `regular` or `test`, plus optional overrides such as `path` or `regularTargetName`). Targets default to `<path>/Sources/<name>` (or `<path>/Tests/<name>` for tests) and tests are paired to their regular target using the `Tests` suffix or the explicit `regularTargetName`.
 - `headerFileURL`: A string that represents the path of the file that will be copied at the top of the `Package.swift`
 - `spaces`: An int that represents the number of spaces that the `Package.swift` generator should use when adding content
