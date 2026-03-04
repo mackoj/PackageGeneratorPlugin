@@ -56,6 +56,43 @@ struct PackageGeneratorConfiguration: Codable {
     self.generateExportedFiles = generateExportedFiles
     self.exportedFilesRelativePath = exportedFilesRelativePath
   }
+
+  enum CodingKeys: String, CodingKey {
+    case mappers
+    case verbose
+    case dryRun
+    case keepTempFiles
+    case leafInfo
+    case exclusions
+    case headerFileURL
+    case packageDirectories
+    case packageDirectoryTargets
+    case targetsParameters
+    case spaces
+    case unusedThreshold
+    case pragmaMark
+    case generateExportedFiles
+    case exportedFilesRelativePath
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.mappers = try container.decodeIfPresent(Mappers.self, forKey: .mappers) ?? Mappers()
+    self.verbose = try container.decodeIfPresent(Bool.self, forKey: .verbose) ?? false
+    self.dryRun = try container.decodeIfPresent(Bool.self, forKey: .dryRun) ?? true
+    self.keepTempFiles = try container.decodeIfPresent(Bool.self, forKey: .keepTempFiles)
+    self.leafInfo = try container.decodeIfPresent(Bool.self, forKey: .leafInfo)
+    self.exclusions = try container.decodeIfPresent(Exclusions.self, forKey: .exclusions) ?? Exclusions()
+    self.headerFileURL = try container.decodeIfPresent(String.self, forKey: .headerFileURL)
+    self.packageDirectories = try container.decodeIfPresent([PackageInformation].self, forKey: .packageDirectories) ?? []
+    self.packageDirectoryTargets = try container.decodeIfPresent([PackageDirectoryTargets].self, forKey: .packageDirectoryTargets) ?? []
+    self.targetsParameters = try container.decodeIfPresent([String: [String]].self, forKey: .targetsParameters)
+    self.spaces = try container.decodeIfPresent(Int.self, forKey: .spaces) ?? 2
+    self.unusedThreshold = try container.decodeIfPresent(Int.self, forKey: .unusedThreshold)
+    self.pragmaMark = try container.decodeIfPresent(Bool.self, forKey: .pragmaMark) ?? false
+    self.generateExportedFiles = try container.decodeIfPresent(Bool.self, forKey: .generateExportedFiles) ?? false
+    self.exportedFilesRelativePath = try container.decodeIfPresent(String.self, forKey: .exportedFilesRelativePath)
+  }
   
   // MARK: - Exclusions
   struct Exclusions: Codable {
