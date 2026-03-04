@@ -8,6 +8,11 @@ public struct PackageInformation: Codable {
   public let test: PathInfo?
   public let target: PathInfo
   
+  public init(target: PathInfo, test: PathInfo? = nil) {
+    self.target = target
+    self.test = test
+  }
+
   public init(from decoder: any Decoder) throws {
     // Legacy Parser
     let stringContainer = try decoder.singleValueContainer()

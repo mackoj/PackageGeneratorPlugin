@@ -50,6 +50,7 @@ _By default to prevent any surprise it will do a dry-run(not modifying your `Pac
 To use it you have to set a configuration file at the root of your project named `packageGenerator.json`.
 This file contains these keys:
 - `packageDirectories`: An array of string that represents where the modules are
+- `packageDirectoryTargets`: An array of objects that describe directories and the targets they contain. Each entry has a `path` and a `targets` array of objects (`name`, `type` equals `regular` or `test`, plus optional overrides such as `path` or `regularTargetName`). Targets default to `<path>/Sources/<name>` (or `<path>/Tests/<name>` for tests) and tests are paired to their regular target using the `Tests` suffix or the explicit `regularTargetName`.
 - `headerFileURL`: A string that represents the path of the file that will be copied at the top of the `Package.swift`
 - `spaces`: An int that represents the number of spaces that the `Package.swift` generator should use when adding content
 - `verbose`: A bool that represents if it should print more information in the console
@@ -105,6 +106,24 @@ Apple frameworks defined in `Plugins/PackageGenerator/AppleSDKs.swift` are exclu
       "ParserCLI"
     ]
   }
+}
+```
+
+If you need to register multiple targets under the same directory, use `packageDirectoryTargets` instead of `packageDirectories`. The plugin will derive each target’s path as described above and attach a test target when one is configured.
+
+```json
+{
+  "packageDirectoryTargets": [
+    {
+      "path": "Packages/CoreMobileServices",
+      "targets": [
+        { "name": "Keys", "type": "regular" },
+        { "name": "CoreMobileServices", "type": "regular" },
+        { "name": "CoreMobileServicesTests", "type": "test" }
+      ]
+    }
+  ],
+  "headerFileURL": "header.swift"
 }
 ```
 

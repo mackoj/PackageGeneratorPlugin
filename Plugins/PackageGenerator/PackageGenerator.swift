@@ -19,6 +19,7 @@ struct PackageGenerator {
       createDefaultConfiguration(configurationFileURL)
     }
     let config = loadConfiguration(configurationFileURL)
+    let resolvedPackageDirectories = config.resolvedPackageDirectories
     validateConfiguration(config, configurationFileURL)
     
     logVerbose("Tool configuration: \(toolConfig)", config)
@@ -30,7 +31,7 @@ struct PackageGenerator {
     logVerbose("packagesFileURL: \(packagesFileURL.path)", config)
     logVerbose("parsedPackageFileURL: \(parsedPackageFileURL.path)", config)
     do {
-      let packageDirectoriesData = try JSONEncoder().encode(config.packageDirectories)
+      let packageDirectoriesData = try JSONEncoder().encode(resolvedPackageDirectories)
       try packageDirectoriesData.write(to: packagesFileURL, options: [.atomic])
     } catch {
       fatalError(.error, "Failed to share data with the cli.")
@@ -302,7 +303,7 @@ struct PackageGenerator {
     if config.headerFileURL == nil || config.headerFileURL?.fileURL.path.isEmpty == true {
       fatalError(.error, "headerFileURL in \(configurationFileURL.path) should not be empty")
     }
-    if config.packageDirectories.isEmpty {
+    if config.resolvedPackageDirectories.isEmpty {
       fatalError(.error, "packageDirectories in \(configurationFileURL.path) should not be empty")
     }
   }
