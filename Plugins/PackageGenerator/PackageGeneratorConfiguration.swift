@@ -211,7 +211,31 @@ extension PackageGeneratorConfiguration {
   var resolvedPackageDirectories: [PackageInformation] {
     var directories = packageDirectories.flatMap { $0.packageInformations }
     directories.append(contentsOf: packageDirectoryTargets.flatMap { $0.packageInformations() })
-    return directories
+    return directories.map { $0.withResolvedExcludes(using: self) }
+  }
+
+  fileprivate func pathInfoWithResolvedExcludes(for info: PackageInformation.PathInfo) -> PackageInformation.PathInfo {
+    let combined = combinedExcludes(for: info)
+    return PackageInformation.PathInfo(path: info.path, name: info.name, exclude: combined)
+  }
+
+  private func combinedExcludes(for info: PackageInformation.PathInfo) -> [String]? {
+    var excludes = Set(info.exclude ?? [])
+    if let parameterExcludes = excludeValues(from: targetsParameters?[info.name]) {
+      excludes.formUnion(parameterExcludes)
+    }
+    return excludes.isEmpty ? nil : excludes.sorted()
+  }
+
+  private func excludeValues(from parameters: [String]?) -> [String]? {
+    guard let parameters else { return nil }
+    var result: [String] = []
+    for parameter in parameters {
+      let trimmed = parameter.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard trimmed.hasPrefix("exclude"), let parsed = parseExcludeValues(from: trimmed) else { continue }
+      result.append(contentsOf: parsed)
+    }
+    return result.isEmpty ? nil : result
   }
 }
 
@@ -241,5 +265,13 @@ extension PackageGeneratorConfiguration.PackageDirectoryTargets {
         }
         return PackageInformation(target: targetInfo, test: testInfo)
       }
+  }
+}
+
+private extension PackageInformation {
+  func withResolvedExcludes(using configuration: PackageGeneratorConfiguration) -> PackageInformation {
+    let targetInfo = configuration.pathInfoWithResolvedExcludes(for: target)
+    let testInfo = test.map { configuration.pathInfoWithResolvedExcludes(for: $0) }
+    return PackageInformation(target: targetInfo, test: testInfo)
   }
 }
