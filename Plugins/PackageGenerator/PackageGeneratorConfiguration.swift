@@ -153,6 +153,9 @@ struct PackageGeneratorConfiguration: Codable {
         if override.hasPrefix("/") {
           return override
         }
+        if override.hasPrefix("Sources/") || override.hasPrefix("Tests/") {
+          return override
+        }
         return (path as NSString).appendingPathComponent(override)
       }
 
