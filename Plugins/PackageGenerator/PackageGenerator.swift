@@ -19,6 +19,17 @@ struct PackageGenerator {
       createDefaultConfiguration(configurationFileURL)
     }
     let config = loadConfiguration(configurationFileURL)
+    let resolvedPackageDirectories = config.resolvedPackageDirectories
+    let sanitizedPackageDirectories = sanitizePackageInformations(resolvedPackageDirectories, packageDirectory: packageDirectory)
+    let normalizedPath: (String) -> String = { rawPath in
+      normalizePath(rawPath, relativeTo: packageDirectory)
+    }
+    let excludesByPath = sanitizedPackageDirectories.reduce(into: [String: [String]]()) { acc, info in
+      acc[normalizedPath(info.target.path)] = info.target.exclude ?? []
+      if let testInfo = info.test {
+        acc[normalizedPath(testInfo.path)] = testInfo.exclude ?? []
+      }
+    }
     validateConfiguration(config, configurationFileURL)
     
     logVerbose("Tool configuration: \(toolConfig)", config)
@@ -30,7 +41,7 @@ struct PackageGenerator {
     logVerbose("packagesFileURL: \(packagesFileURL.path)", config)
     logVerbose("parsedPackageFileURL: \(parsedPackageFileURL.path)", config)
     do {
-      let packageDirectoriesData = try JSONEncoder().encode(config.packageDirectories)
+      let packageDirectoriesData = try JSONEncoder().encode(sanitizedPackageDirectories)
       try packageDirectoriesData.write(to: packagesFileURL, options: [.atomic])
     } catch {
       fatalError(.error, "Failed to share data with the cli.")
@@ -69,6 +80,14 @@ struct PackageGenerator {
       parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
     } catch {
       fatalError(.error, "Failed to read at \(parsedPackageFileURL.path) or Failed to JSONDecode at \(parsedPackageFileURL.path)")
+    }
+    parsedPackages = parsedPackages.map { parsedPackage in
+      var parsedPackage = parsedPackage
+      let normalizedFullPath = FileURL(fileURLWithPath: parsedPackage.fullPath).standardized.path
+      if let excludes = excludesByPath[normalizedFullPath] {
+        parsedPackage.exclude = excludes
+      }
+      return parsedPackage
     }
     
     if config.keepTempFiles == false {
@@ -302,7 +321,7 @@ struct PackageGenerator {
     if config.headerFileURL == nil || config.headerFileURL?.fileURL.path.isEmpty == true {
       fatalError(.error, "headerFileURL in \(configurationFileURL.path) should not be empty")
     }
-    if config.packageDirectories.isEmpty {
+    if config.resolvedPackageDirectories.isEmpty {
       fatalError(.error, "packageDirectories in \(configurationFileURL.path) should not be empty")
     }
   }
@@ -341,7 +360,142 @@ struct PackageGenerator {
     }
     return parsedPackages
   }
-  
+
+  private static func sanitizePackageInformations(
+    _ packageInformations: [PackageInformation],
+    packageDirectory: FileURL
+  ) -> [PackageInformation] {
+    let sourcesRoot = packageDirectory.appendingPathComponent("Sources").standardized.path
+    let testsRoot = packageDirectory.appendingPathComponent("Tests").standardized.path
+    let targetNames = Set(packageInformations.map { $0.target.name })
+    let testNames = Set(packageInformations.compactMap { $0.test?.name })
+    let testBaseNames = Set(testNames.compactMap { baseName(for: $0) })
+    let sourceDirectoryMap = buildDirectoryMap(for: targetNames, under: [sourcesRoot, testsRoot])
+    let testDirectoryMap = buildDirectoryMap(for: testNames.union(testBaseNames), under: [testsRoot])
+    return packageInformations.map { information in
+      let sanitizedTarget = sanitizePathInfo(
+        information.target,
+        packageDirectory: packageDirectory,
+        defaultFolder: "Sources",
+        directoryMap: sourceDirectoryMap,
+        fallbackRoot: sourcesRoot
+      )
+      let sanitizedTest = information.test.map {
+        sanitizePathInfo(
+          $0,
+          packageDirectory: packageDirectory,
+          defaultFolder: "Tests",
+          directoryMap: testDirectoryMap,
+          fallbackRoot: testsRoot
+        )
+      }
+      return PackageInformation(target: sanitizedTarget, test: sanitizedTest)
+    }
+  }
+
+  private static func sanitizePathInfo(
+    _ pathInfo: PackageInformation.PathInfo,
+    packageDirectory: FileURL,
+    defaultFolder: String,
+    directoryMap: [String: String],
+    fallbackRoot: String
+  ) -> PackageInformation.PathInfo {
+    let normalized = normalizePath(pathInfo.path, relativeTo: packageDirectory)
+    if directoryExists(at: normalized) {
+      return pathInfo.updatingPath(normalized)
+    }
+    if let trimmed = dropDefaultFolderIfNeeded(from: normalized, folder: defaultFolder),
+       directoryExists(at: trimmed) {
+      return pathInfo.updatingPath(trimmed)
+    }
+    if let mapped = directoryMap[pathInfo.name], directoryExists(at: mapped) {
+      return pathInfo.updatingPath(mapped)
+    }
+    if let stripped = baseName(for: pathInfo.name),
+       let mapped = directoryMap[stripped],
+       directoryExists(at: mapped) {
+      return pathInfo.updatingPath(mapped)
+    }
+    if let fallback = findDirectory(named: pathInfo.name, under: fallbackRoot) {
+      return pathInfo.updatingPath(fallback)
+    }
+    return pathInfo.updatingPath(normalized)
+  }
+
+  private static func normalizePath(_ rawPath: String, relativeTo packageDirectory: FileURL) -> String {
+    let url: FileURL
+    if rawPath.hasPrefix("/") {
+      url = FileURL(fileURLWithPath: rawPath)
+    } else {
+      url = packageDirectory.appendingPathComponent(rawPath)
+    }
+    return url.standardized.path
+  }
+
+  private static func dropDefaultFolderIfNeeded(from path: String, folder: String) -> String? {
+    guard folder.isEmpty == false else { return nil }
+    var url = URL(fileURLWithPath: path).standardized
+    let targetName = url.lastPathComponent
+    url.deleteLastPathComponent()
+    guard url.lastPathComponent == folder else { return nil }
+    url.deleteLastPathComponent()
+    return url.appendingPathComponent(targetName).standardized.path
+  }
+
+  private static func directoryExists(at path: String) -> Bool {
+    var isDirectory: ObjCBool = false
+    return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+  }
+
+  private static func buildDirectoryMap(for names: Set<String>, under rootPaths: [String]) -> [String: String] {
+    guard names.isEmpty == false else { return [:] }
+    var map: [String: String] = [:]
+    for rootPath in rootPaths {
+      var isDirectory: ObjCBool = false
+      guard FileManager.default.fileExists(atPath: rootPath, isDirectory: &isDirectory), isDirectory.boolValue,
+            let enumerator = FileManager.default.enumerator(atPath: rootPath) else {
+        continue
+      }
+      for case let entry as String in enumerator {
+        let candidate = (rootPath as NSString).appendingPathComponent(entry)
+        var candidateIsDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: candidate, isDirectory: &candidateIsDir), candidateIsDir.boolValue {
+          let name = URL(fileURLWithPath: candidate).lastPathComponent
+          if names.contains(name), map[name] == nil {
+            map[name] = FileURL(fileURLWithPath: candidate).standardized.path
+          }
+        }
+      }
+    }
+    return map
+  }
+
+  private static func findDirectory(named name: String, under rootPath: String) -> String? {
+    guard name.isEmpty == false else { return nil }
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: rootPath, isDirectory: &isDirectory), isDirectory.boolValue,
+          let enumerator = FileManager.default.enumerator(atPath: rootPath) else {
+      return nil
+    }
+    for case let entry as String in enumerator {
+      let candidate = (rootPath as NSString).appendingPathComponent(entry)
+      var candidateIsDir: ObjCBool = false
+      if FileManager.default.fileExists(atPath: candidate, isDirectory: &candidateIsDir), candidateIsDir.boolValue {
+        if URL(fileURLWithPath: candidate).lastPathComponent == name {
+          return FileURL(fileURLWithPath: candidate).standardized.path
+        }
+      }
+    }
+    return nil
+  }
+
+  private static func baseName(for name: String) -> String? {
+    let suffix = "Tests"
+    guard name.hasSuffix(suffix) else { return nil }
+    let stripped = String(name.dropLast(suffix.count))
+    return stripped.isEmpty ? nil : stripped
+  }
+
   // MARK: Generate
   private static func generateProducts(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration) {
     outputFileHandle.write("// MARK: - Targets\n".data(using: .utf8)!)
@@ -394,9 +548,33 @@ struct PackageGenerator {
       dependencies = "\n\(spaces)\(spaces)dependencies: [\n" + localDependencies.map{ "\(spaces)\(spaces)\(spaces)\(configuration.mappers.imports[$0, default: "\"\($0)\""])" }.sorted(by: <).joined(separator: ",\n") + "\n\(spaces)\(spaces)],"
     }
 
+    let targetParametersList = configuration.targetsParameters?[name] ?? []
+    var remainingParameters: [String] = []
+    var parameterExcludes: [String] = []
+    for parameter in targetParametersList {
+      let trimmed = parameter.trimmingCharacters(in: .whitespacesAndNewlines)
+      if trimmed.hasPrefix("exclude") {
+        if let parsed = parseExcludeValues(from: trimmed) {
+          parameterExcludes.append(contentsOf: parsed)
+        }
+        continue
+      }
+      remainingParameters.append(parameter)
+    }
+    let combinedExcludes = Set(fakeTarget.exclude + parameterExcludes).sorted(by: <)
     var otherParameters = ""
-    if let targetParameters = configuration.targetsParameters?[name], targetParameters.isEmpty == false {
-      otherParameters = ",\n" + targetParameters.map { "\(spaces)\(spaces)\($0)" } .joined(separator: ",\n")
+    if combinedExcludes.isEmpty == false {
+      let formatted = combinedExcludes
+        .map { "\(spaces)\(spaces)\(spaces)\"\($0)\"" }
+        .joined(separator: ",\n")
+      otherParameters += """
+,\n\(spaces)\(spaces)exclude: [
+\(formatted)
+\(spaces)\(spaces)]
+"""
+    }
+    if remainingParameters.isEmpty == false {
+      otherParameters += ",\n" + remainingParameters.map { "\(spaces)\(spaces)\($0)" }.joined(separator: ",\n")
     }
     
     var isLeaf = "// [\(fakeTarget.dependencies.count)|\(fakeTarget.localDependencies)" + (fakeTarget.hasBiggestNumberOfDependencies ? "|🚛]" : "]")
@@ -427,7 +605,7 @@ struct PackageGenerator {
     if lastCommon != futureLastCommon { return futureLastCommon }
     return nil
   }
-  
+
   // MARK: - Generate Exported Files
   private static func generateExportedFiles(_ parsedPackages: [ParsedPackage], _ configuration: PackageGeneratorConfiguration, _ packageDirectory: URL) {
     let sourcesDirectory = packageDirectory
@@ -494,5 +672,11 @@ struct PackageGenerator {
 
   private static func logWarning(_ message: String) {
     print("[PackageGenerator WARNING] \(message)")
+  }
+}
+
+private extension PackageInformation.PathInfo {
+  func updatingPath(_ path: String) -> PackageInformation.PathInfo {
+    PackageInformation.PathInfo(path: path, name: name, exclude: exclude)
   }
 }
