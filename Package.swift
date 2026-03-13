@@ -14,8 +14,8 @@ let package = Package(
   targets: [
     .binaryTarget(
       name: "package-generator-cli",
-      url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.5.3/package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
-      checksum: "ec580947ac3f40d8860ded64d25bc45d6d36a644de7aefc024c9b205843679e0"
+      url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.6.0/package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
+      checksum: "6b62ef97d1d930281a4a65e9e47b1aec9d7dc90d2cb5282085cf8e705e5ec743"
     ),
     //.binaryTarget(
     //  name: "package-generator-cli",
