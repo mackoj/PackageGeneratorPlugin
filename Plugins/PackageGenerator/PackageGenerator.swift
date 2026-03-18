@@ -30,6 +30,11 @@ struct PackageGenerator {
         acc[normalizedPath(testInfo.path)] = testInfo.exclude ?? []
       }
     }
+    let testTargetNamesByPath = sanitizedPackageDirectories.reduce(into: [String: String]()) { acc, info in
+      guard let testInfo = info.test else { return }
+      let normalizedTestPath = normalizedPath(testInfo.path)
+      acc[normalizedTestPath] = baseName(for: testInfo.name) ?? testInfo.name
+    }
     validateConfiguration(config, configurationFileURL)
     
     logVerbose("Tool configuration: \(toolConfig)", config)
@@ -113,11 +118,18 @@ struct PackageGenerator {
     parsedPackages = parsedPackages.map { parsedPackage in
       var parsedPackage = parsedPackage
       var localDependencies = parsedPackage.dependencies
+      let normalizedFullPath = FileURL(fileURLWithPath: parsedPackage.fullPath).standardized.path
       localDependencies.removeAll(where: appleExclusions.contains(_:))
       localDependencies.removeAll(where: importExclusions.contains(_:))
       localDependencies.sort(by: <)
 
-      let mappedName = config.mappers.targets[parsedPackage.path, default: parsedPackage.name]
+      let defaultName: String
+      if parsedPackage.isTest, let configuredTestName = testTargetNamesByPath[normalizedFullPath] {
+        defaultName = configuredTestName
+      } else {
+        defaultName = parsedPackage.name
+      }
+      let mappedName = config.mappers.targets[parsedPackage.path, default: defaultName]
       let candidateNamesToFilter = Set([parsedPackage.name, mappedName])
       let removedSelfImports = localDependencies.filter { candidateNamesToFilter.contains($0) }
       if removedSelfImports.isEmpty == false {
@@ -147,7 +159,9 @@ struct PackageGenerator {
     
     if let targetNames = config.targetsParameters?.keys, targetNames.isEmpty == false {
       let tNames = Set(targetNames)
-      let parsedPackagesNames = parsedPackages.map(\.name)
+      let parsedPackagesNames = Set(parsedPackages.map { parsedPackage in
+        parsedPackage.name + (parsedPackage.isTest ? "Tests" : "")
+      })
       let toRemove = tNames.subtracting(parsedPackagesNames)
       if toRemove.isEmpty == false {
         for targetToRemove in toRemove {

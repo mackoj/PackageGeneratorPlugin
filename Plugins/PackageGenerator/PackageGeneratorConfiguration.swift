@@ -244,16 +244,31 @@ extension PackageGeneratorConfiguration {
 
 extension PackageGeneratorConfiguration.PackageDirectoryTargets {
   func packageInformations() -> [PackageInformation] {
+    let regularTargets = targets.filter { $0.type == .regular }
+    let regularNames = Set(regularTargets.map(\.name))
     var mappedTests: [String: Target] = [:]
+    var unmatchedTests: [Target] = []
+
     for target in targets where target.type == .test {
-      if let regularName = regularTargetName(for: target) {
+      if let regularName = regularTargetName(for: target), regularNames.contains(regularName) {
         mappedTests[regularName] = target
+      } else {
+        unmatchedTests.append(target)
       }
     }
 
-    return targets
-      .filter { $0.type == .regular }
-      .map { regular -> PackageInformation in
+    // Some package groups expose several regular targets but a single umbrella
+    // test target (for example "CoreUITests"). When no explicit/matching regular
+    // target is found, we attach that test target to the first still-unpaired
+    // regular target so it remains part of generation.
+    for testTarget in unmatchedTests {
+      guard let fallbackRegular = regularTargets.first(where: { mappedTests[$0.name] == nil }) else {
+        continue
+      }
+      mappedTests[fallbackRegular.name] = testTarget
+    }
+
+    return regularTargets.map { regular -> PackageInformation in
         let targetInfo = PackageInformation.PathInfo(
           path: targetPath(for: regular),
           name: regular.name,
