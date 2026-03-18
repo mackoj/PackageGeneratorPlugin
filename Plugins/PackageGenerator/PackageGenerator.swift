@@ -227,11 +227,7 @@ struct PackageGenerator {
     
     // Write Targets
     logVerbose("Generating Targets...", config)
-    var sortedParsedPackages = parsedPackages.sorted(by: \.name, order: <)
-    if config.pragmaMark {
-      sortedParsedPackages = parsedPackages.sorted(by: (\.fullPath, order: <), (\.name, order: <))
-    }
-    generateTargets(sortedParsedPackages, outputFileHandle, config, packageDirectory)
+    generateTargets(parsedPackages, outputFileHandle, config)
     outputFileHandle.closeFile()
     
     // Generate exported.swift files if enabled
@@ -528,25 +524,38 @@ struct PackageGenerator {
     outputFileHandle.write("\(last)\n])\n".data(using: .utf8)!)
   }
   
-  private static func generateTargets(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration, _ packageDirectory: URL) {
+  private static func generateTargets(_ parsedPackages: [ParsedPackage], _ outputFileHandle: FileHandle, _ configuration: PackageGeneratorConfiguration) {
     outputFileHandle.write("// MARK: - Products\n".data(using: .utf8)!)
     outputFileHandle.write("package.targets.append(contentsOf: [\n".data(using: .utf8)!)
-    
-    let sourceCodePath = packageDirectory.appendingPathComponent("Sources")
+
+    let sortedParsedPackages: [ParsedPackage]
+    if configuration.pragmaMark {
+      sortedParsedPackages = parsedPackages.sorted { lhs, rhs in
+        let lhsGroup = pragmaMarkGroupName(for: lhs.path, fallbackName: lhs.name)
+        let rhsGroup = pragmaMarkGroupName(for: rhs.path, fallbackName: rhs.name)
+        if lhsGroup != rhsGroup { return lhsGroup < rhsGroup }
+        if lhs.isTest != rhs.isTest { return lhs.isTest == false }
+        if lhs.name != rhs.name { return lhs.name < rhs.name }
+        return lhs.path < rhs.path
+      }
+    } else {
+      sortedParsedPackages = parsedPackages.sorted(by: \.name, order: <)
+    }
+
     var last: String = ""
-    var lastCommonPath: String = ""
-    for parsedPackage in parsedPackages {
+    var lastGroupName: String = ""
+    for parsedPackage in sortedParsedPackages {
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
       }
-      
-      let packageFolder = parsedPackage.fullPath
+
       last = fakeTargetToSwiftCode(parsedPackage, configuration)
-      if configuration.pragmaMark == true, let linePath = URL(string: packageFolder, relativeTo: sourceCodePath) {
-        if let newLastCommon = generateHeader(lastCommonPath, linePath.relativePath) {
+      if configuration.pragmaMark {
+        let groupName = pragmaMarkGroupName(for: parsedPackage.path, fallbackName: parsedPackage.name)
+        if lastGroupName != groupName {
           outputFileHandle.write("// MARK: -\n".data(using: .utf8)!)
-          outputFileHandle.write("// MARK: \(newLastCommon)\n".data(using: .utf8)!)
-          lastCommonPath = newLastCommon
+          outputFileHandle.write("// MARK: \(groupName)\n".data(using: .utf8)!)
+          lastGroupName = groupName
         }
       }
     }
@@ -602,22 +611,22 @@ struct PackageGenerator {
    """
   }
   
-  private static func generateHeader(_ lastCommon: String, _ line: String) -> String? {
-    let withoutSource = line.replacingOccurrences(of: "Sources/", with: "")
-    let nbSlashes = withoutSource.count(of: "/")
-    var futureLastCommon = ""
-    
-    if nbSlashes == 0 {
-      futureLastCommon = withoutSource
-    } else {
-      let lastIdxSlash = withoutSource.lastIndex(of: "/")!
-      let withoutLastSlash = withoutSource[..<lastIdxSlash]
-      if lastCommon == withoutLastSlash { return nil }
-      futureLastCommon = String(withoutLastSlash)
+  private static func pragmaMarkGroupName(for targetPath: String, fallbackName: String) -> String {
+    let components = targetPath.split(separator: "/").map(String.init)
+    guard components.isEmpty == false else { return fallbackName }
+
+    if components.count >= 2, components[0] == "Sources" || components[0] == "Tests" {
+      return components[1]
     }
-    
-    if lastCommon != futureLastCommon { return futureLastCommon }
-    return nil
+
+    if let sourcesIndex = components.firstIndex(of: "Sources"), components.count > sourcesIndex + 1 {
+      return components[sourcesIndex + 1]
+    }
+    if let testsIndex = components.firstIndex(of: "Tests"), components.count > testsIndex + 1 {
+      return components[testsIndex + 1]
+    }
+
+    return components.first ?? fallbackName
   }
 
   // MARK: - Generate Exported Files
