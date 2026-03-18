@@ -130,7 +130,9 @@ struct PackageGenerator {
         defaultName = parsedPackage.name
       }
       let mappedName = config.mappers.targets[parsedPackage.path, default: defaultName]
-      let candidateNamesToFilter = Set([parsedPackage.name, mappedName])
+      let moduleName = parsedPackage.name + (parsedPackage.isTest ? "Tests" : "")
+      let mappedModuleName = mappedName + (parsedPackage.isTest ? "Tests" : "")
+      let candidateNamesToFilter = Set([moduleName, mappedModuleName])
       let removedSelfImports = localDependencies.filter { candidateNamesToFilter.contains($0) }
       if removedSelfImports.isEmpty == false {
         localDependencies.removeAll(where: { candidateNamesToFilter.contains($0) })
