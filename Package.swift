@@ -11,6 +11,9 @@ let package = Package(
   products: [
     .plugin(name: "PackageGenerator", targets: ["Package Generator"]),
   ],
+  dependencies: [
+    .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.1"),
+  ],
   targets: [
     .binaryTarget(
       name: "package-generator-cli",
@@ -21,12 +24,19 @@ let package = Package(
     //  name: "package-generator-cli",
     //  path: "../PackageGeneratorCLI/package-generator-cli-arm64-apple-macosx.artifactbundle.zip"
     //),
+    .executableTarget(
+      name: "yaml-converter",
+      dependencies: [
+        .product(name: "Yams", package: "Yams"),
+      ],
+      path: "Tools/YamlConverter"
+    ),
     .plugin(
       name: "Package Generator",
       capability: .command(
         intent: .custom(
           verb: "package-generator",
-          description: "Generate the Package.swift based on packageGenerator.json"
+          description: "Generate the Package.swift based on the packageGenerator config"
         ),
         permissions: [
           .writeToPackageDirectory(reason: "This plug-in need to update the Package.swift in the package folder."),
@@ -34,6 +44,7 @@ let package = Package(
       ),
       dependencies: [
         .target(name: "package-generator-cli"),
+        .target(name: "yaml-converter"),
       ],
       path: "Plugins/PackageGenerator"
     ),

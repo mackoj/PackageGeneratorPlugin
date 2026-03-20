@@ -13,12 +13,16 @@ struct PackageGenerator {
     
     /// Prepare configuration
     toolConfig = updateDefaultConfigFileName(arguments, toolConfig)
+    let configurationFileURL = resolveConfigurationFileURL(packageDirectory, arguments, toolConfig)
+    toolConfig.defaultConfigFileName = configurationFileURL.lastPathComponent
     saveToolConfig(toolConfig, toolConfigFileURL)
-    let configurationFileURL = getConfigurationFileURL(packageDirectory, arguments, toolConfig.defaultConfigFileName)
+    let configurationFileFormat = ConfigurationFileFormat(configurationFileURL: configurationFileURL)
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
-      createDefaultConfiguration(configurationFileURL)
+      createDefaultConfiguration(configurationFileURL, configurationFileFormat, context, packageTempFolder)
+      Diagnostics.emit(.warning, "Created default configuration at \(configurationFileURL.path). Fill it in and rerun package-generator.")
+      return
     }
-    let config = loadConfiguration(configurationFileURL)
+    let config = loadConfiguration(configurationFileURL, configurationFileFormat, context, packageTempFolder)
     let resolvedPackageDirectories = config.resolvedPackageDirectories
     let sanitizedPackageDirectories = sanitizePackageInformations(resolvedPackageDirectories, packageDirectory: packageDirectory)
     let normalizedPath: (String) -> String = { rawPath in
@@ -285,16 +289,79 @@ struct PackageGenerator {
     let configurationFileURL = packageDirectory.appendingPathComponent(configurationFileName)
     return configurationFileURL
   }
+
+  private static func resolveConfigurationFileURL(
+    _ packageDirectory: FileURL,
+    _ arguments: [String],
+    _ toolConfig: ToolConfiguration
+  ) -> FileURL {
+    if let confIndex = arguments.firstIndex(of: "--confFile") {
+      let paramIndex = arguments.index(after: confIndex)
+      if paramIndex < arguments.endIndex {
+        return packageDirectory.appendingPathComponent(arguments[paramIndex])
+      }
+    }
+
+    for candidate in ["packageGenerator.yaml", "packageGenerator.yml", "packageGenerator.json"] {
+      let candidateURL = packageDirectory.appendingPathComponent(candidate)
+      if FileManager.default.fileExists(atPath: candidateURL.path) {
+        return candidateURL
+      }
+    }
+
+    return packageDirectory.appendingPathComponent(toolConfig.defaultConfigFileName)
+  }
   
-  private static func createDefaultConfiguration(_ configurationFileURL: FileURL) {
+  private static func createDefaultConfiguration(
+    _ configurationFileURL: FileURL,
+    _ configurationFileFormat: ConfigurationFileFormat,
+    _ context: PackagePlugin.PluginContext,
+    _ packageTempFolder: FileURL
+  ) {
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
-      Diagnostics.emit(.error, "Missing a configuration file at \(configurationFileURL.path)")
-      Diagnostics.emit(.error, "We will generate a default one for you but you will need to customise it.")
+      Diagnostics.emit(.warning, "Missing configuration file at \(configurationFileURL.path); generating a default template.")
       var defaultConf: Data!
       do {
+        let packageDirectory = configurationFileURL.deletingLastPathComponent()
+        let starterConfiguration = PackageGeneratorConfiguration(headerFileURL: "header.swift")
         let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        defaultConf = try encoder.encode(PackageGeneratorConfiguration())
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let jsonData = try encoder.encode(starterConfiguration)
+        if configurationFileFormat.usesYAMLConverter {
+          let inputFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
+          let outputFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).yaml")
+          defer {
+            try? FileManager.default.removeItem(at: inputFileURL)
+            try? FileManager.default.removeItem(at: outputFileURL)
+          }
+          try jsonData.write(to: inputFileURL, options: [.atomic])
+          convertConfigurationFile(
+            inputFileURL,
+            outputFileURL,
+            from: .json,
+            to: .yaml,
+            context
+          )
+          defaultConf = try Data(contentsOf: outputFileURL)
+        } else {
+          defaultConf = jsonData
+        }
+        let headerFileURL = packageDirectory.appendingPathComponent("header.swift")
+        if FileManager.default.fileExists(atPath: headerFileURL.path) == false {
+          let headerTemplate = """
+          // swift-tools-version: 5.10
+
+          import PackageDescription
+
+          var package = Package(
+            name: "\(packageDirectory.lastPathComponent)",
+            products: [],
+            dependencies: [],
+            targets: [],
+          )
+          """
+          try headerTemplate.data(using: .utf8)?.write(to: headerFileURL, options: [.atomic])
+        }
       } catch {
         fatalError(.error, "Failed to encode a default configuration.")
       }
@@ -306,10 +373,28 @@ struct PackageGenerator {
     }
   }
   
-  private static func loadConfiguration(_ configurationFileURL: FileURL) -> PackageGeneratorConfiguration{
+  private static func loadConfiguration(
+    _ configurationFileURL: FileURL,
+    _ configurationFileFormat: ConfigurationFileFormat,
+    _ context: PackagePlugin.PluginContext,
+    _ packageTempFolder: FileURL
+  ) -> PackageGeneratorConfiguration{
     var data: Data
     do {
-      data = try Data(contentsOf: configurationFileURL)
+      if configurationFileFormat.usesYAMLConverter {
+        let outputFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: outputFileURL) }
+        convertConfigurationFile(
+          configurationFileURL,
+          outputFileURL,
+          from: .yaml,
+          to: .json,
+          context
+        )
+        data = try Data(contentsOf: outputFileURL)
+      } else {
+        data = try Data(contentsOf: configurationFileURL)
+      }
       if data.isEmpty {
         fatalError(.error, "Failed to read Data from file \(configurationFileURL.path)")
       }
@@ -318,15 +403,41 @@ struct PackageGenerator {
     }
     var config: PackageGeneratorConfiguration
     do {
-      config = try JSONDecoder().decode(PackageGeneratorConfiguration.self, from: data)
+      let decoder = JSONDecoder()
+      config = try decoder.decode(PackageGeneratorConfiguration.self, from: data)
     } catch {
       Diagnostics.emit(.error, "packageDirectories might be empty")
       Diagnostics.emit(.error, String(data: data, encoding: String.Encoding.utf8) ?? "<nil>")
-      fatalError(.error, "Failed to decode JSON file \(configurationFileURL.path)\n\(dump(error))")
+      fatalError(.error, "Failed to decode configuration file \(configurationFileURL.path)\n\(dump(error))")
     }
     
     logVerbose("Configuration: \(config)", config)
     return config
+  }
+
+  private static func convertConfigurationFile(
+    _ inputFileURL: FileURL,
+    _ outputFileURL: FileURL,
+    from inputFormat: ConfigurationFileFormat,
+    to outputFormat: ConfigurationFileFormat,
+    _ context: PackagePlugin.PluginContext
+  ) {
+    let arguments = [
+      "--input-file-url",
+      inputFileURL.path,
+      "--output-file-url",
+      outputFileURL.path,
+      "--input-format",
+      inputFormat.cliArgument,
+      "--output-format",
+      outputFormat.cliArgument,
+    ]
+    runCli(
+      context: context,
+      toolName: "yaml-converter",
+      arguments: arguments,
+      verbose: false
+    )
   }
   
   private static func validateConfiguration(_ config: PackageGeneratorConfiguration, _ configurationFileURL: FileURL) {
