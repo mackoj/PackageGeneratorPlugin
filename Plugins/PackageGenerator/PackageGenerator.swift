@@ -13,11 +13,14 @@ struct PackageGenerator {
     
     /// Prepare configuration
     toolConfig = updateDefaultConfigFileName(arguments, toolConfig)
+    let configurationFileURL = resolveConfigurationFileURL(packageDirectory, arguments, toolConfig)
+    toolConfig.defaultConfigFileName = configurationFileURL.lastPathComponent
     saveToolConfig(toolConfig, toolConfigFileURL)
-    let configurationFileURL = getConfigurationFileURL(packageDirectory, arguments, toolConfig.defaultConfigFileName)
     let configurationFileFormat = ConfigurationFileFormat(configurationFileURL: configurationFileURL)
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
       createDefaultConfiguration(configurationFileURL, configurationFileFormat, context, packageTempFolder)
+      Diagnostics.emit(.warning, "Created default configuration at \(configurationFileURL.path). Fill it in and rerun package-generator.")
+      return
     }
     let config = loadConfiguration(configurationFileURL, configurationFileFormat, context, packageTempFolder)
     let resolvedPackageDirectories = config.resolvedPackageDirectories
@@ -286,6 +289,28 @@ struct PackageGenerator {
     let configurationFileURL = packageDirectory.appendingPathComponent(configurationFileName)
     return configurationFileURL
   }
+
+  private static func resolveConfigurationFileURL(
+    _ packageDirectory: FileURL,
+    _ arguments: [String],
+    _ toolConfig: ToolConfiguration
+  ) -> FileURL {
+    if let confIndex = arguments.firstIndex(of: "--confFile") {
+      let paramIndex = arguments.index(after: confIndex)
+      if paramIndex < arguments.endIndex {
+        return packageDirectory.appendingPathComponent(arguments[paramIndex])
+      }
+    }
+
+    for candidate in ["packageGenerator.yaml", "packageGenerator.yml", "packageGenerator.json"] {
+      let candidateURL = packageDirectory.appendingPathComponent(candidate)
+      if FileManager.default.fileExists(atPath: candidateURL.path) {
+        return candidateURL
+      }
+    }
+
+    return packageDirectory.appendingPathComponent(toolConfig.defaultConfigFileName)
+  }
   
   private static func createDefaultConfiguration(
     _ configurationFileURL: FileURL,
@@ -294,13 +319,14 @@ struct PackageGenerator {
     _ packageTempFolder: FileURL
   ) {
     if FileManager.default.fileExists(atPath: configurationFileURL.path) == false {
-      Diagnostics.emit(.error, "Missing a configuration file at \(configurationFileURL.path)")
-      Diagnostics.emit(.error, "We will generate a default one for you but you will need to customise it.")
+      Diagnostics.emit(.warning, "Missing configuration file at \(configurationFileURL.path); generating a default template.")
       var defaultConf: Data!
       do {
+        let packageDirectory = configurationFileURL.deletingLastPathComponent()
+        let starterConfiguration = PackageGeneratorConfiguration(headerFileURL: "header.swift")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let jsonData = try encoder.encode(PackageGeneratorConfiguration())
+        let jsonData = try encoder.encode(starterConfiguration)
         if configurationFileFormat.usesYAMLConverter {
           let inputFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).json")
           let outputFileURL = packageTempFolder.appendingPathComponent("\(UUID().uuidString).yaml")
@@ -319,6 +345,22 @@ struct PackageGenerator {
           defaultConf = try Data(contentsOf: outputFileURL)
         } else {
           defaultConf = jsonData
+        }
+        let headerFileURL = packageDirectory.appendingPathComponent("header.swift")
+        if FileManager.default.fileExists(atPath: headerFileURL.path) == false {
+          let headerTemplate = """
+          // swift-tools-version: 5.10
+
+          import PackageDescription
+
+          var package = Package(
+            name: "\(packageDirectory.lastPathComponent)",
+            products: [],
+            dependencies: [],
+            targets: [],
+          )
+          """
+          try headerTemplate.data(using: .utf8)?.write(to: headerFileURL, options: [.atomic])
         }
       } catch {
         fatalError(.error, "Failed to encode a default configuration.")

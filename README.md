@@ -21,6 +21,8 @@ Package Generator adds imports that it read from the source code files to their 
 
 After [installing it](#installation) you will be able to run it but for it to work properly it needs to be [configured](#configuration). By default, it will run with `dry-run` set to true and this will create a file `Package_generated.swift` to allow you to preview what will happen. After having properly configured it and testing that the `Package_generated.swift` generate the correct content you will need to set `dry-run` to false in the configuration to write in the real `Package.swift` file.
 
+If the configuration file is missing, the plugin will create a default template and stop so you can fill in the required values before rerunning it.
+
 Each time you need to add a module remember to add it to the configuration file. 
 
 ## How does it work?
@@ -47,8 +49,8 @@ _By default to prevent any surprise it will do a dry-run(not modifying your `Pac
 
 ## Configuration
 
-To use it you have to set a configuration file at the root of your project named `packageGenerator.json`, `packageGenerator.yaml`, or `packageGenerator.yml`.
-The plugin will read and write the file using the format implied by its extension.
+To use it you have to set a configuration file at the root of your project named `packageGenerator.yaml`, `packageGenerator.yml`, or `packageGenerator.json`.
+The plugin will auto-detect an existing file in that order, then read and write it using the format implied by its extension.
 
 This file contains these keys:
 - `packageDirectories`: An array where each entry can either be a legacy string/object describing a single target or a new object mirroring the CLI `result.json` (containing `path` plus a `targets` array). Each target entry may specify `name`, `type`, optionally `path`, and optionally `exclude`, which the plugin will honor when generating `Package.swift`.
