@@ -20,6 +20,10 @@ let package = Package(
       url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.6.1/package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
       checksum: "8eb833ab6ae853c82f67657c1c8fd27cbcbe30dfc7667893fe2a17a9a72622fd"
     ),
+    //.binaryTarget(
+    //  name: "package-generator-cli",
+    //  path: "../PackageGeneratorCLI/package-generator-cli-arm64-apple-macosx.artifactbundle.zip"
+    //),
     .executableTarget(
       name: "yaml-converter",
       dependencies: [
