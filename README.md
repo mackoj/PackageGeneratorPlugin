@@ -40,14 +40,16 @@ The plugin will display messages and errors in **Xcode Report navigator**.
 | step | description | img |
 | --- | --- | --- |
 | 0 | To run it right click on the package you want to run it on. | ![Capture d’écran 2022-11-07 à 11 04 05](https://user-images.githubusercontent.com/661647/200282866-d509a44e-df6b-4fc5-aab1-5fe1aeba2c1c.png) |
-| 1 | It will propose you to run it you can provide an optional argument(`--confFile newName.json`) in the argument pane, which will allow you to change the name of the configuration file. Once change the new configuration file name will be stored | ![Capture d’écran 2022-11-07 à 11 05 28](https://user-images.githubusercontent.com/661647/200283337-b89744f5-6b90-4a29-8744-6a5210293146.png) |
+| 1 | It will propose you to run it you can provide an optional argument(`--confFile packageGenerator.yaml`) in the argument pane, which will allow you to change the name of the configuration file. Once change the new configuration file name will be stored | ![Capture d’écran 2022-11-07 à 11 05 28](https://user-images.githubusercontent.com/661647/200283337-b89744f5-6b90-4a29-8744-6a5210293146.png) |
 | 2 | At first launch, it will ask for permission to write files into the project directory for it to work you have to select "Allow Command to Change Files". | ![Capture d’écran 2022-12-14 à 15 38 34](https://user-images.githubusercontent.com/661647/207636648-06a9bc81-d192-4731-a17c-96385154c212.png) |
 
 _By default to prevent any surprise it will do a dry-run(not modifying your `Package.swift` but creating a `Package_generated.swift`) for you to allow you time to review it before using it._
 
 ## Configuration
 
-To use it you have to set a configuration file at the root of your project named `packageGenerator.json`.
+To use it you have to set a configuration file at the root of your project named `packageGenerator.json`, `packageGenerator.yaml`, or `packageGenerator.yml`.
+The plugin will read and write the file using the format implied by its extension.
+
 This file contains these keys:
 - `packageDirectories`: An array where each entry can either be a legacy string/object describing a single target or a new object mirroring the CLI `result.json` (containing `path` plus a `targets` array). Each target entry may specify `name`, `type`, optionally `path`, and optionally `exclude`, which the plugin will honor when generating `Package.swift`.
 - `packageDirectoryTargets`: An array of objects that describe directories and the targets they contain. Each entry has a `path` and a `targets` array of objects (`name`, `type` equals `regular` or `test`, plus optional overrides such as `path` or `regularTargetName`). Targets default to `<path>/Sources/<name>` (or `<path>/Tests/<name>` for tests) and tests are paired to their regular target using the `Tests` suffix or the explicit `regularTargetName`. If no match is found, the plugin falls back to attaching the test target to the first available regular target in the same group so it is still generated.
@@ -107,6 +109,41 @@ Apple frameworks defined in `Plugins/PackageGenerator/AppleSDKs.swift` are exclu
     ]
   }
 }
+```
+
+The same configuration can also be written in YAML:
+
+```yaml
+packageDirectories:
+  - Sources/App/Clients/Analytics
+  - Sources/App/Clients/AnalyticsLive
+  - Sources/App/Daemons/Notification
+  - Sources/App/Helpers/Foundation
+headerFileURL: header.swift
+targetsParameters:
+  Analytics:
+    - 'exclude: ["__Snapshots__"]'
+    - 'resources: [.copy("Fonts/")]'
+  target2:
+    - 'resources: [.copy("Dictionaries/")]'
+verbose: false
+pragmaMark: false
+spaces: 2
+dryRun: true
+generateExportedFiles: false
+exportedFilesRelativePath: Generated
+mappers:
+  targets:
+    Sources/App/Helpers/Foundation/: FoundationHelpers
+  imports:
+    ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
+exclusions:
+  apple:
+    - CustomAppleFramework
+  imports:
+    - PurchasesCoreSwift
+  targets:
+    - ParserCLI
 ```
 
 If you need to register multiple targets under the same directory, use `packageDirectoryTargets` instead of `packageDirectories`. The plugin will derive each target’s path as described above and attach a test target when one is configured.

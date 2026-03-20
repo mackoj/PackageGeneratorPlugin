@@ -12,4 +12,6 @@ package-generator-cli.artifactbundle/
 xcuserdata/
 header.txt
 packageGenerator.json
+packageGenerator.yaml
+packageGenerator.yml
 Package_generated.swift
