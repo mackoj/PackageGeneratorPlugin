@@ -34,6 +34,10 @@ struct PackageGenerator {
         acc[normalizedPath(testInfo.path)] = testInfo.exclude ?? []
       }
     }
+    let macroTargetPaths = Set(sanitizedPackageDirectories.compactMap { info -> String? in
+      guard info.target.isMacro else { return nil }
+      return normalizedPath(info.target.path)
+    })
     let testTargetNamesByPath = sanitizedPackageDirectories.reduce(into: [String: String]()) { acc, info in
       guard let testInfo = info.test else { return }
       let normalizedTestPath = normalizedPath(testInfo.path)
@@ -95,6 +99,9 @@ struct PackageGenerator {
       let normalizedFullPath = FileURL(fileURLWithPath: parsedPackage.fullPath).standardized.path
       if let excludes = excludesByPath[normalizedFullPath] {
         parsedPackage.exclude = excludes
+      }
+      if macroTargetPaths.contains(normalizedFullPath) {
+        parsedPackage.isMacro = true
       }
       return parsedPackage
     }
@@ -627,6 +634,7 @@ struct PackageGenerator {
     var last: String = ""
     for parsedPackage in parsedPackages.sorted(by: \.name, order: <) {
       if parsedPackage.isTest { continue }
+      if parsedPackage.isMacro { continue }
       if last.isEmpty == false {
         outputFileHandle.write("\(last),\n".data(using: .utf8)!)
       }
@@ -717,7 +725,7 @@ struct PackageGenerator {
     if configuration.leafInfo != true { isLeaf = "" }
     
     return """
-   \(spaces).\(fakeTarget.isTest ? "testTarget" : "target")(
+   \(spaces).\(fakeTarget.isTest ? "testTarget" : fakeTarget.isMacro ? "macro" : "target")(
    \(spaces)\(spaces)name: "\(name)",\(isLeaf)\(dependencies)
    \(spaces)\(spaces)path: "\(fakeTarget.path)"\(otherParameters)
    \(spaces))
@@ -813,6 +821,6 @@ struct PackageGenerator {
 
 private extension PackageInformation.PathInfo {
   func updatingPath(_ path: String) -> PackageInformation.PathInfo {
-    PackageInformation.PathInfo(path: path, name: name, exclude: exclude)
+    PackageInformation.PathInfo(path: path, name: name, exclude: exclude, isMacro: isMacro)
   }
 }

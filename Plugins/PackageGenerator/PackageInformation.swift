@@ -5,6 +5,26 @@ public struct PackageInformation: Codable {
     public let path: String
     public let name: String
     public let exclude: [String]?
+    public let isMacro: Bool
+
+    public init(path: String, name: String, exclude: [String]? = nil, isMacro: Bool = false) {
+      self.path = path
+      self.name = name
+      self.exclude = exclude
+      self.isMacro = isMacro
+    }
+
+    enum CodingKeys: CodingKey {
+      case path, name, exclude, isMacro
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.path = try container.decode(String.self, forKey: .path)
+      self.name = try container.decode(String.self, forKey: .name)
+      self.exclude = try container.decodeIfPresent([String].self, forKey: .exclude)
+      self.isMacro = try container.decodeIfPresent(Bool.self, forKey: .isMacro) ?? false
+    }
   }
   public let test: PathInfo?
   public let target: PathInfo

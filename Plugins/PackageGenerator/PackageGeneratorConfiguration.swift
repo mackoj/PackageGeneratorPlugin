@@ -127,13 +127,14 @@ struct PackageGeneratorConfiguration: Codable {
       enum TargetType: String, Codable {
         case regular
         case test
-        
+        case macro
+
         var defaultFolder: String {
           switch self {
-          case .regular:
+            case .regular, .macro:
             return "Sources"
-          case .test:
-            return "Tests"
+            case .test:
+              return "Tests"
           }
         }
       }
@@ -219,7 +220,7 @@ extension PackageGeneratorConfiguration {
 
   fileprivate func pathInfoWithResolvedExcludes(for info: PackageInformation.PathInfo) -> PackageInformation.PathInfo {
     let combined = combinedExcludes(for: info)
-    return PackageInformation.PathInfo(path: info.path, name: info.name, exclude: combined)
+    return PackageInformation.PathInfo(path: info.path, name: info.name, exclude: combined, isMacro: info.isMacro)
   }
 
   private func combinedExcludes(for info: PackageInformation.PathInfo) -> [String]? {
@@ -244,13 +245,13 @@ extension PackageGeneratorConfiguration {
 
 extension PackageGeneratorConfiguration.PackageDirectoryTargets {
   func packageInformations() -> [PackageInformation] {
-    let regularTargets = targets.filter { $0.type == .regular }
-    let regularNames = Set(regularTargets.map(\.name))
+    let nonTestTargets = targets.filter { $0.type == .regular || $0.type == .macro }
+    let nonTestNames = Set(nonTestTargets.map(\.name))
     var mappedTests: [String: Target] = [:]
     var unmatchedTests: [Target] = []
 
     for target in targets where target.type == .test {
-      if let regularName = regularTargetName(for: target), regularNames.contains(regularName) {
+      if let regularName = regularTargetName(for: target), nonTestNames.contains(regularName) {
         mappedTests[regularName] = target
       } else {
         unmatchedTests.append(target)
@@ -262,19 +263,20 @@ extension PackageGeneratorConfiguration.PackageDirectoryTargets {
     // target is found, we attach that test target to the first still-unpaired
     // regular target so it remains part of generation.
     for testTarget in unmatchedTests {
-      guard let fallbackRegular = regularTargets.first(where: { mappedTests[$0.name] == nil }) else {
+      guard let fallbackRegular = nonTestTargets.first(where: { mappedTests[$0.name] == nil }) else {
         continue
       }
       mappedTests[fallbackRegular.name] = testTarget
     }
 
-    return regularTargets.map { regular -> PackageInformation in
+    return nonTestTargets.map { target -> PackageInformation in
         let targetInfo = PackageInformation.PathInfo(
-          path: targetPath(for: regular),
-          name: regular.name,
-          exclude: regular.exclude
+          path: targetPath(for: target),
+          name: target.name,
+          exclude: target.exclude,
+          isMacro: target.type == .macro
         )
-        let testInfo = mappedTests[regular.name].map { test -> PackageInformation.PathInfo in
+        let testInfo = mappedTests[target.name].map { test -> PackageInformation.PathInfo in
           PackageInformation.PathInfo(
             path: targetPath(for: test),
             name: test.name,
