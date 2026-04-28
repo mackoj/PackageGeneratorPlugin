@@ -161,6 +161,11 @@ struct PackageGeneratorConfiguration: Codable {
       }
 
       let folder = target.type.defaultFolder
+      // If the group path already ends with the target name, it IS the target directory.
+      // Avoid producing a double-nested path like Sources/OrderDetail/Sources/OrderDetail.
+      if URL(fileURLWithPath: path).lastPathComponent == target.name {
+        return path
+      }
       let base = (path as NSString).appendingPathComponent(folder)
       return (base as NSString).appendingPathComponent(target.name)
     }
