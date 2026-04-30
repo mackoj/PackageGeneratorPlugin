@@ -640,6 +640,7 @@ struct PackageGenerator {
       }
       return bestMatch
     }
+
   private static func baseName(for name: String) -> String? {
     let suffix = "Tests"
     guard name.hasSuffix(suffix) else { return nil }
