@@ -578,46 +578,68 @@ struct PackageGenerator {
   }
 
   private static func buildDirectoryMap(for names: Set<String>, under rootPaths: [String]) -> [String: String] {
-    guard names.isEmpty == false else { return [:] }
-    var map: [String: String] = [:]
-    for rootPath in rootPaths {
+      guard names.isEmpty == false else { return [:] }
+      var map: [String: String] = [:]
+      for rootPath in rootPaths {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: rootPath, isDirectory: &isDirectory), isDirectory.boolValue,
+              let enumerator = FileManager.default.enumerator(atPath: rootPath) else {
+          continue
+        }
+        for case let entry as String in enumerator {
+          let candidate = (rootPath as NSString).appendingPathComponent(entry)
+          var candidateIsDir: ObjCBool = false
+          if FileManager.default.fileExists(atPath: candidate, isDirectory: &candidateIsDir), candidateIsDir.boolValue {
+            let name = URL(fileURLWithPath: candidate).lastPathComponent
+            if names.contains(name) {
+              let candidatePath = FileURL(fileURLWithPath: candidate).standardized.path
+              
+              // FIX: Prevent deeply nested directories from hijacking root targets
+              // by always preferring the shortest path (least depth).
+              if let existingPath = map[name] {
+                if candidatePath.components(separatedBy: "/").count < existingPath.components(separatedBy: "/").count {
+                  map[name] = candidatePath
+                }
+              } else {
+                map[name] = candidatePath
+              }
+            }
+          }
+        }
+      }
+      return map
+    }
+
+  private static func findDirectory(named name: String, under rootPath: String) -> String? {
+      guard name.isEmpty == false else { return nil }
       var isDirectory: ObjCBool = false
       guard FileManager.default.fileExists(atPath: rootPath, isDirectory: &isDirectory), isDirectory.boolValue,
             let enumerator = FileManager.default.enumerator(atPath: rootPath) else {
-        continue
+        return nil
       }
+      
+      var bestMatch: String? = nil
+      
       for case let entry as String in enumerator {
         let candidate = (rootPath as NSString).appendingPathComponent(entry)
         var candidateIsDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: candidate, isDirectory: &candidateIsDir), candidateIsDir.boolValue {
-          let name = URL(fileURLWithPath: candidate).lastPathComponent
-          if names.contains(name), map[name] == nil {
-            map[name] = FileURL(fileURLWithPath: candidate).standardized.path
+          if URL(fileURLWithPath: candidate).lastPathComponent == name {
+            let candidatePath = FileURL(fileURLWithPath: candidate).standardized.path
+            
+            // FIX: Always prefer the shortest path
+            if let existingPath = bestMatch {
+              if candidatePath.components(separatedBy: "/").count < existingPath.components(separatedBy: "/").count {
+                bestMatch = candidatePath
+              }
+            } else {
+              bestMatch = candidatePath
+            }
           }
         }
       }
+      return bestMatch
     }
-    return map
-  }
-
-  private static func findDirectory(named name: String, under rootPath: String) -> String? {
-    guard name.isEmpty == false else { return nil }
-    var isDirectory: ObjCBool = false
-    guard FileManager.default.fileExists(atPath: rootPath, isDirectory: &isDirectory), isDirectory.boolValue,
-          let enumerator = FileManager.default.enumerator(atPath: rootPath) else {
-      return nil
-    }
-    for case let entry as String in enumerator {
-      let candidate = (rootPath as NSString).appendingPathComponent(entry)
-      var candidateIsDir: ObjCBool = false
-      if FileManager.default.fileExists(atPath: candidate, isDirectory: &candidateIsDir), candidateIsDir.boolValue {
-        if URL(fileURLWithPath: candidate).lastPathComponent == name {
-          return FileURL(fileURLWithPath: candidate).standardized.path
-        }
-      }
-    }
-    return nil
-  }
 
   private static func baseName(for name: String) -> String? {
     let suffix = "Tests"
