@@ -19,8 +19,6 @@ Auto-generate complex multi-target SPM `Package.swift`. Read source imports, res
    
    **packageGenerator.yaml:**
    ```yaml
-   verbose: false
-   dryRun: true
    pragmaMark: true
    spaces: 4
    headerFileURL: PackageHeader.swift
@@ -29,33 +27,26 @@ Auto-generate complex multi-target SPM `Package.swift`. Read source imports, res
      - path: Sources/Core
        targets:
          - name: Core
-           type: regular
          - name: CoreTests
            type: test
      
      - path: Sources/Features
        targets:
          - name: Auth
-           type: regular
            parameters:
              - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
          - name: AuthTests
            type: test
    
-   mappers:
-     imports:
-       ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
-   
    exclusions:
-     apple: []
      imports:
        - MyPrivateFramework
    ```
 
 3. **Run** plugin (Xcode):
    - Right-click package → "Package Generator"
-   - First run uses dry-run (generates `Package_generated.swift`)
-   - Review output, then set `dryRun: false` to write to real `Package.swift`
+   - Output is written directly to `Package.swift` (`dryRun` defaults to `false`)
+   - Use `dryRun: true` to preview in `Package_generated.swift` first
 
 4. **CI**: `swift package plugin --allow-writing-to-package-directory package-generator`
 
@@ -65,17 +56,18 @@ Auto-generate complex multi-target SPM `Package.swift`. Read source imports, res
 
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
-| `verbose` | Bool | false | Print detailed diagnostics |
-| `dryRun` | Bool | true | Generate `Package_generated.swift` instead of `Package.swift` |
-| `pragmaMark` | Bool | false | Add `// MARK:` comments grouping targets by path |
-| `generateExportedFiles` | Bool | false | Generate `exported.swift` with `@_exported import` for each target |
+| `verbose` | String | `"none"` | Verbose diagnostics scope: `"none"`, `"plugin"`, `"cli"`, `"all"` |
+| `dryRun` | Bool | `false` | Generate `Package_generated.swift` instead of `Package.swift` |
+| `pragmaMark` | Bool | `false` | Add `// MARK:` comments grouping targets by path |
+| `generateExportedFiles` | Bool | `false` | Generate `exported.swift` with `@_exported import` for each target |
 | `exportedFilesRelativePath` | String | null | Subdirectory for exported files (e.g., `"Generated"`) |
 | `headerFileURL` | String | null | Path to file prepended to `Package.swift` |
-| `spaces` | Int | 2 | Indentation spaces |
-| `keepTempFiles` | Bool | false | Preserve YAML→JSON temp files (debug) |
-| `leafInfo` | Bool | false | Add dependency count comments to targets |
+| `spaces` | Int | `2` | Indentation spaces |
+| `keepTempFiles` | Bool | `false` | Preserve YAML→JSON temp files (debug) |
+| `leafInfo` | Bool | `false` | Add dependency count comments to targets |
 | `unusedThreshold` | Int | null | Warn if local target used ≤ this (0 = warn if unused) |
-| `silenceUnresolvedImportWarnings` | Bool | false | Don't warn about unresolved imports |
+
+`verbose` accepts a legacy `true`/`false` bool for backward compatibility (`true` = `"all"`, `false` = `"none"`).
 
 ### packageDirectoryTargets
 
@@ -108,16 +100,18 @@ Override import → product mapping + target renaming.
 ```yaml
 mappers:
   imports:
-    ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
-    Alamofire: '.product(name: "Alamofire", package: "Alamofire")'
+    # Only needed when auto-discovery can't resolve a product.
+    # Auto-discovery reads root Package.swift dependencies and maps
+    # each product to its URL-derived package identity automatically.
+    TrackerBinary: '.product(name: "Tracker", package: "clickstream-mobile-sdk-kmp-releases")'
   
   targets:
     Sources/App/Helpers/Foundation: FoundationHelpers
 ```
 
-- `imports`: maps import name to SPM `.product()` format
+- `imports`: manually map an import name to an SPM `.product()` string; merged with auto-discovered products (manual overrides win)
 - `targets`: maps target path to alternative name
-- Auto-discovered products from root Package.swift dependencies are merged in
+- Auto-discovery reads all direct dependencies in your root `Package.swift` and maps each product to its URL-derived package identity (last path component of the URL); `mappers.imports` is only needed for edge cases where the import name differs from the product name
 
 ### exclusions
 
@@ -125,16 +119,14 @@ Suppress imports from Package.swift generation.
 
 ```yaml
 exclusions:
-  apple:                    # Additional Apple SDKs (beyond built-in list)
-    - MyCustomAppleFramework
-  imports:                  # Third-party frameworks to skip
+  imports:           # Third-party frameworks to skip
     - SomePrivateLib
-  targets:                  # Targets to exclude entirely
+  targets:           # Targets to exclude entirely
     - ParserCLI
     - HelperBinary
 ```
 
-Apple frameworks (UIKit, Foundation, etc.) are auto-excluded. Use `apple` only for extras.
+Apple frameworks (UIKit, Foundation, SwiftUI, etc.) are auto-excluded via the built-in SDK list — no configuration needed.
 
 ### Backward Compatibility
 
@@ -237,8 +229,6 @@ Logs: `📦 UnusedModule is used 0 times`
 ### Large Modular Project
 
 ```yaml
-verbose: false
-dryRun: false
 pragmaMark: true
 generateExportedFiles: true
 exportedFilesRelativePath: Generated
@@ -251,9 +241,7 @@ packageDirectoryTargets:
   - path: Packages/Core
     targets:
       - name: Foundation
-        type: regular
       - name: Models
-        type: regular
         parameters:
           - 'resources: [.process("Assets.xcassets")]'
       - name: CoreTests
@@ -262,17 +250,11 @@ packageDirectoryTargets:
   - path: Packages/Features
     targets:
       - name: Auth
-        type: regular
         parameters:
           - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
       - name: Cart
-        type: regular
       - name: FeaturesTests
         type: test
-
-mappers:
-  imports:
-    ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
 
 exclusions:
   imports:
@@ -282,7 +264,6 @@ exclusions:
 ### TCA + SwiftUI Project
 
 ```yaml
-dryRun: false
 pragmaMark: true
 spaces: 4
 headerFileURL: PackageHeader.swift
@@ -291,27 +272,19 @@ packageDirectoryTargets:
   - path: Sources/App
     targets:
       - name: AppCore
-        type: regular
         parameters:
           - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
           - 'swiftSettings: [.defaultIsolation(MainActor.self)]'
       - name: AppUI
-        type: regular
       - name: AppTests
         type: test
 
   - path: Sources/Features/Home
     targets:
       - name: HomeFeature
-        type: regular
       - name: HomeUI
-        type: regular
       - name: HomeTests
         type: test
-
-mappers:
-  imports:
-    ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
 ```
 
 ## Diagnostics
@@ -320,10 +293,10 @@ Errors appear in Xcode Report Navigator:
 
 - `❌ Error: Config file not found` — no `packageGenerator.{yaml,yml,json}` at root
 - `❌ Error: YAML decode failed` — invalid YAML syntax
-- `ℹ️ Dropped unresolved import 'SomeLib'` — import not in local targets + external products
+- `ℹ️ Dropped unresolved import 'SomeLib'` — import not in local targets or auto-discovered/mapped products; add a `mappers.imports` entry if it's a real dependency
 - `📦 UnusedModule is used 0 times` — target never imported by others
 
-Use `verbose: true` for detailed tracing.
+Use `verbose: "all"` for full diagnostics, `verbose: "cli"` or `verbose: "plugin"` for targeted output.
 
 ## FAQ
 
@@ -334,7 +307,7 @@ A: Check `packageDirectoryTargets[].path`. Plugin uses shortest-path logic in So
 A: V2 supports old `targetsParameters` dict—no changes needed. Migrate to inline `parameters` when ready.
 
 **Q: How do I exclude Apple frameworks?**  
-A: They're auto-excluded via the built-in list in `AppleSDKs.swift`. The `exclusions.apple` config key is no longer needed and is silently ignored if present in old configs.
+A: They're auto-excluded via the built-in SDK list. No configuration needed. The `exclusions.apple` config key from older versions is silently ignored if present.
 
 **Q: Can I use both YAML and JSON?**  
 A: Yes. Plugin auto-detects by filename. Change file extension to switch formats.

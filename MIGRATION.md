@@ -16,9 +16,10 @@ PackageGenerator V2 is a **complete rewrite** following a strict 7-Epic architec
 | **Config Schema** | Legacy `targetParameters` dict | Inline `parameters` in targets | Both work, inline preferred |
 | **Macro Targets** | ❌ | ✅ | Now supports `.macro()` targets |
 | **Exported Files** | ✅ | ✅ Enhanced | Inline parameters support for better control |
-| **Zero-Exclusion** | ❌ | ✅ | Auto-drops only known (Apple SDKs + mapped products) |
+| **Auto-Discovery** | ❌ | ✅ | Products auto-discovered from root Package.swift; `mappers.imports` rarely needed |
 | **Dependency Weight** | ❌ | ✅ | `leafInfo: true` shows dep count + marks heaviest 🚛 |
 | **Unused Detection** | ❌ | ✅ | `unusedThreshold` warns unused targets |
+| **Verbose Scope** | Bool | String enum | `"none"` / `"plugin"` / `"cli"` / `"all"`; `true`/`false` still accepted |
 | **MARK Grouping** | ✅ | ✅ Improved | Better path-based sorting |
 
 ## What's the Same
@@ -76,17 +77,25 @@ packageDirectoryTargets:
 
 **How to migrate?** Move `targetsParameters[targetName]` entries to `packageDirectoryTargets[].targets[name].parameters`. That's it.
 
-### 3. New Settings (All Optional)
-
-Add any of these to `packageGenerator.yaml`:
+### 3. New and Changed Settings
 
 ```yaml
 # V2-only settings (old config works without these)
 keepTempFiles: false        # Debug YAML→JSON conversion
 leafInfo: false             # Add dependency weight comments
 unusedThreshold: null       # Warn if target used ≤ this
-silenceUnresolvedImportWarnings: false  # Suppress warnings
+
+# verbose is now a string scope (bool still accepted for compatibility)
+verbose: "none"             # "none" | "plugin" | "cli" | "all"
+                            # true = "all", false = "none" (legacy)
+
+# dryRun default changed from true → false
+dryRun: false               # writes directly to Package.swift by default
 ```
+
+**Removed settings** (silently ignored if present in old configs):
+- `silenceUnresolvedImportWarnings` — no longer needed; all real unresolved imports emit a warning
+- `exclusions.apple` — Apple SDKs are now always auto-excluded via built-in list
 
 ## Migration Strategies
 
@@ -152,7 +161,7 @@ Then remove `targetsParameters` section from YAML.
 A: V2 searches in order: `--confFile arg` → `packageGenerator.yaml` → `packageGenerator.yml` → `packageGenerator.json`. Ensure one exists at package root.
 
 **Q: Unresolved import warnings appeared**  
-A: V2 uses strict intersection (only link known targets + products). If a library isn't in root `Package.swift` dependencies, add it or use `mappers.imports` to alias it.
+A: V2 auto-discovers products from all direct dependencies in your root `Package.swift` using the URL-derived package identity. If an import is still unresolved, the product name differs from the import name — add a `mappers.imports` entry for it.
 
 **Q: New `leafInfo` feature adds weird comments**  
 A: `leafInfo: false` (default). To disable, ensure it's set in config.
@@ -181,6 +190,9 @@ A: Yes, indefinite. Both formats supported forever in V2. Migrate when ready, no
 | **Old configs** | ✅ Works | ✅ Works | None needed |
 | **New inline format** | ❌ N/A | ✅ Works | Optional: migrate gradually |
 | **Macro targets** | ❌ | ✅ | Use if needed |
+| **Auto-discovery** | ❌ | ✅ | Most `mappers.imports` entries can be removed |
+| **verbose scope** | `Bool` | `String` | `true`/`false` still works; use `"cli"`/`"plugin"`/`"all"` for precision |
+| **dryRun default** | `true` | `false` | Add `dryRun: true` if you relied on the old default |
 | **New features** | N/A | `leafInfo`, `unusedThreshold` | Optional: enable in config |
 | **Migration cost** | N/A | ~5 min per 10 targets | Can be done gradually or all-at-once |
 
