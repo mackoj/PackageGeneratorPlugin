@@ -1,273 +1,338 @@
-# Package Generator
+# PackageGenerator V2
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmackoj%2FPackageGeneratorPlugin%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/mackoj/PackageGeneratorPlugin)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmackoj%2FPackageGeneratorPlugin%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mackoj/PackageGeneratorPlugin)
+Auto-generate complex multi-target SPM `Package.swift`. Read source imports, resolve dependencies, build targets. Works with heavily modularized projects + TCA.
 
-⚠️ This is in beta
+- **Backward compatible**: old config format still works
+- **Zero-exclusion filtering**: only links known targets + products (Apple SDKs auto-ignored)
+- **Advanced analysis**: unused target detection, dependency weight, exported files
+- **CLI-free config**: auto-finds `packageGenerator.yaml/yml/json`
+- **Full V2 architecture**: 7 epics from design, strict schema
 
-Package Generator is a Swift Package Manager Plugin for simply updating your `Package.swift` file consistently and understandably. This is a great tool for projects that are heavily modularized or use TCA and thus rely on a clean and updated `Package.swift`.
+## Quick Start
 
-Package Generator adds imports that it read from the source code files to their target in `Package.swift`. This will help reduce compilation issues with SwiftUI Preview too.
+1. **Install** (add to dependencies in your root Package.swift):
+   ```swift
+   .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "1.0.0")
+   ```
 
-* [First Launch?](#first-launch)
-* [How does it work?](#how-does-it-work)
-* [Installation](#installation)
-* [Basic usage](#basic-usage)
-* [Configuration](#configuration)
-* [CI](#ci)
-* [FAQ](#faq)
+2. **Create** config at project root. Choose YAML or JSON:
+   
+   **packageGenerator.yaml:**
+   ```yaml
+   pragmaMark: true
+   spaces: 4
+   headerFileURL: PackageHeader.swift
+   
+   packageDirectoryTargets:
+     - path: Sources/Core
+       targets:
+         - name: Core
+         - name: CoreTests
+           type: test
+     
+     - path: Sources/Features
+       targets:
+         - name: Auth
+           parameters:
+             - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
+         - name: AuthTests
+           type: test
+   
+   exclusions:
+     imports:
+       - MyPrivateFramework
+   ```
 
-## First Launch
+3. **Run** plugin (Xcode):
+   - Right-click package → "Package Generator"
+   - Output is written directly to `Package.swift` (`dryRun` defaults to `false`)
+   - Use `dryRun: true` to preview in `Package_generated.swift` first
 
-After [installing it](#installation) you will be able to run it but for it to work properly it needs to be [configured](#configuration). By default, it will run with `dry-run` set to true and this will create a file `Package_generated.swift` to allow you to preview what will happen. After having properly configured it and testing that the `Package_generated.swift` generate the correct content you will need to set `dry-run` to false in the configuration to write in the real `Package.swift` file.
+4. **CI**: `swift package plugin --allow-writing-to-package-directory package-generator`
 
-If the configuration file is missing, the plugin will create a default template and stop so you can fill in the required values before rerunning it.
+## Configuration Reference
 
-Each time you need to add a module remember to add it to the configuration file. 
+### Top-Level Settings
 
-## How does it work?
+| Key | Type | Default | Purpose |
+|-----|------|---------|---------|
+| `verbose` | String | `"none"` | Verbose diagnostics scope: `"none"`, `"plugin"`, `"cli"`, `"all"` |
+| `dryRun` | Bool | `false` | Generate `Package_generated.swift` instead of `Package.swift` |
+| `pragmaMark` | Bool | `false` | Add `// MARK:` comments grouping targets by path |
+| `generateExportedFiles` | Bool | `false` | Generate `exported.swift` with `@_exported import` for each target |
+| `exportedFilesRelativePath` | String | null | Subdirectory for exported files (e.g., `"Generated"`) |
+| `headerFileURL` | String | null | Path to file prepended to `Package.swift` |
+| `spaces` | Int | `2` | Indentation spaces |
+| `keepTempFiles` | Bool | `false` | Preserve YAML→JSON temp files (debug) |
+| `leafInfo` | Bool | `false` | Add dependency count comments to targets |
+| `unusedThreshold` | Int | null | Warn if local target used ≤ this (0 = warn if unused) |
 
-Package Generator goes to all folders set in the configuration then read all swift files to look at all the imports to create a target to add to the Package.swift.
+`verbose` accepts a legacy `true`/`false` bool for backward compatibility (`true` = `"all"`, `false` = `"none"`).
 
-The code analyzing part is made using [swift-syntax](https://github.com/apple/swift-syntax.git) since I didn't find a way to link it to the plugin I have to package it in a [CLI](https://github.com/mackoj/PackageGeneratorCLI) that is used to do the parsing part.
+### packageDirectoryTargets
 
-## Installation
-
-Add to your dependencies `.package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.5.0"),`
-
-## Basic usage
-
-The plugin will display messages and errors in **Xcode Report navigator**. 
-
-| step | description | img |
-| --- | --- | --- |
-| 0 | To run it right click on the package you want to run it on. | ![Capture d’écran 2022-11-07 à 11 04 05](https://user-images.githubusercontent.com/661647/200282866-d509a44e-df6b-4fc5-aab1-5fe1aeba2c1c.png) |
-| 1 | It will propose you to run it you can provide an optional argument(`--confFile packageGenerator.yaml`) in the argument pane, which will allow you to change the name of the configuration file. Once change the new configuration file name will be stored | ![Capture d’écran 2022-11-07 à 11 05 28](https://user-images.githubusercontent.com/661647/200283337-b89744f5-6b90-4a29-8744-6a5210293146.png) |
-| 2 | At first launch, it will ask for permission to write files into the project directory for it to work you have to select "Allow Command to Change Files". | ![Capture d’écran 2022-12-14 à 15 38 34](https://user-images.githubusercontent.com/661647/207636648-06a9bc81-d192-4731-a17c-96385154c212.png) |
-
-_By default to prevent any surprise it will do a dry-run(not modifying your `Package.swift` but creating a `Package_generated.swift`) for you to allow you time to review it before using it._
-
-## Configuration
-
-To use it you have to set a configuration file at the root of your project named `packageGenerator.yaml`, `packageGenerator.yml`, or `packageGenerator.json`.
-The plugin will auto-detect an existing file in that order, then read and write it using the format implied by its extension.
-
-This file contains these keys:
-- `packageDirectories`: An array where each entry can either be a legacy string/object describing a single target or a new object mirroring the CLI `result.json` (containing `path` plus a `targets` array). Each target entry may specify `name`, `type`, optionally `path`, and optionally `exclude`, which the plugin will honor when generating `Package.swift`.
-- `packageDirectoryTargets`: An array of objects that describe directories and the targets they contain. Each entry has a `path` and a `targets` array of objects (`name`, `type` equals `regular` or `test`, plus optional overrides such as `path` or `regularTargetName`). Targets default to `<path>/Sources/<name>` (or `<path>/Tests/<name>` for tests) and tests are paired to their regular target using the `Tests` suffix or the explicit `regularTargetName`. If no match is found, the plugin falls back to attaching the test target to the first available regular target in the same group so it is still generated.
-- `headerFileURL`: A string that represents the path of the file that will be copied at the top of the `Package.swift`
-- `spaces`: An int that represents the number of spaces that the `Package.swift` generator should use when adding content
-- `verbose`: A bool that represents if it should print more information in the console
-- `pragmaMark`: A bool that represents if we should add `// MARK: -` in the generated file
-- `dryRun`: A bool that represents if the generator should replace the `Package.swift` file or create a `Package_generated.swift`
-- `mappers.targets`: An dictionary that handles target renaming the key represents a target `path` with the `/` and the value represents the name to apply. For example in the `packageDirectories` I have `Sources/App/Helpers/Foundation` but in my code, I import `FoundationHelpers`.
-- `mappers.imports`: An dictionary that represents how to map import that requires a `.product` in SPM for example `ComposableArchitecture` require to be called `.product(name: "ComposableArchitecture", package: "swift-composable-architecture")` in a `Package.swift`.
-- `exclusions`: An object that represents all imports that should not be added as dependencies to a target or targets in the generated `Package.swift`
-- `exclusions.apple`: An array of strings for extra Apple SDKs you want to exclude. A comprehensive list of Apple frameworks is already filtered by default (see `Plugins/PackageGenerator/AppleSDKs.swift`), so this only needs to contain anything beyond those defaults.
-- `exclusions.imports`: An array of string that represents all other SDK that should not be added as dependencies to a target
-- `exclusions.targets`: An array of string that represent all targets that should not be added in the generated `Package.swift`
-- `targetsParameters`: An dictionary that represent what custom parameter to add to a target
-- `generateExportedFiles`: A bool that represents if the generator should create `exported.swift` files in each package with `@_exported import` statements for local dependencies
-- `exportedFilesRelativePath`: An optional string that specifies a relative path within each package where the `exported.swift` files should be placed. If not specified, files are placed in the package root directory.
-
-Apple frameworks defined in `Plugins/PackageGenerator/AppleSDKs.swift` are excluded automatically, so you only need to add entries to `exclusions.apple` if you want to append additional Apple SDKs that are not already covered.
-
-```json
-{
-  "packageDirectories": [
-    "Sources/App/Clients/Analytics",
-    "Sources/App/Clients/AnalyticsLive",
-    "Sources/App/Daemons/Notification",
-    "Sources/App/Helpers/Foundation"
-  ],
-  "headerFileURL": "header.swift",
-  "targetsParameters": {
-    "Analytics": ["exclude: [\"__Snapshots__\"]", "resources: [.copy(\"Fonts/\")]"],
-    "target2": ["resources: [.copy(\"Dictionaries/\")]"]
-  },
-  "verbose": false,
-  "pragmaMark": false,
-  "spaces": 2,
-  "dryRun": true,
-  "generateExportedFiles": false,
-  "exportedFilesRelativePath": "Generated",
-  "mappers": {
-    "targets": {
-      "Sources/App/Helpers/Foundation/": "FoundationHelpers",
-    },
-    "imports": {
-      "ComposableArchitecture": ".product(name: \"ComposableArchitecture\", package: \"swift-composable-architecture\")"
-    }
-  },
-  "exclusions": {
-    "apple": [
-      "CustomAppleFramework"
-    ],
-    "imports": [
-      "PurchasesCoreSwift"
-    ],
-    "targets": [
-      "ParserCLI"
-    ]
-  }
-}
-```
-
-The same configuration can also be written in YAML:
+Array of directory groups. Each group declares path + targets.
 
 ```yaml
-packageDirectories:
-  - Sources/App/Clients/Analytics
-  - Sources/App/Clients/AnalyticsLive
-  - Sources/App/Daemons/Notification
-  - Sources/App/Helpers/Foundation
-headerFileURL: header.swift
-targetsParameters:
-  Analytics:
-    - 'exclude: ["__Snapshots__"]'
-    - 'resources: [.copy("Fonts/")]'
-  target2:
-    - 'resources: [.copy("Dictionaries/")]'
-verbose: false
-pragmaMark: false
-spaces: 2
-dryRun: true
-generateExportedFiles: false
-exportedFilesRelativePath: Generated
+packageDirectoryTargets:
+  - path: Sources/Modules
+    targets:
+      - name: ModuleA
+        type: regular                          # regular, test, or macro
+        path: null                             # override computed path if needed
+        exclude: ["__Snapshots__", "Mocks"]   # exclude patterns
+        parameters:                            # inline SPM target parameters
+          - 'swiftSettings: [...]'
+          - 'resources: [.process("Files")]'
+        regularTargetName: null                # for tests: explicit link to regular target
+```
+
+**Path Resolution** (shortest-path logic):
+- Regular target: `<path>/Sources/<name>` or custom `path`
+- Test target: `<path>/Tests/<name>` or custom `path`
+- If computed path doesn't exist, recursive search in Sources/Tests wins shortest match
+- Test auto-pairs with regular via suffix strip (e.g., `ModuleATests` → `ModuleA`)
+
+### mappers
+
+Override import → product mapping + target renaming.
+
+```yaml
 mappers:
-  targets:
-    Sources/App/Helpers/Foundation/: FoundationHelpers
   imports:
-    ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
+    # Only needed when auto-discovery can't resolve a product.
+    # Auto-discovery reads root Package.swift dependencies and maps
+    # each product to its URL-derived package identity automatically.
+    TrackerBinary: '.product(name: "Tracker", package: "clickstream-mobile-sdk-kmp-releases")'
+  
+  targets:
+    Sources/App/Helpers/Foundation: FoundationHelpers
+```
+
+- `imports`: manually map an import name to an SPM `.product()` string; merged with auto-discovered products (manual overrides win)
+- `targets`: maps target path to alternative name
+- Auto-discovery reads all direct dependencies in your root `Package.swift` and maps each product to its URL-derived package identity (last path component of the URL); `mappers.imports` is only needed for edge cases where the import name differs from the product name
+
+### exclusions
+
+Suppress imports from Package.swift generation.
+
+```yaml
 exclusions:
-  apple:
-    - CustomAppleFramework
-  imports:
-    - PurchasesCoreSwift
-  targets:
+  imports:           # Third-party frameworks to skip
+    - SomePrivateLib
+  targets:           # Targets to exclude entirely
     - ParserCLI
+    - HelperBinary
 ```
 
-If you need to register multiple targets under the same directory, use `packageDirectoryTargets` instead of `packageDirectories`. The plugin will derive each target’s path as described above and attach a test target when one is configured.
+Apple frameworks (UIKit, Foundation, SwiftUI, etc.) are auto-excluded via the built-in SDK list — no configuration needed.
 
-```json
-{
-  "packageDirectoryTargets": [
-    {
-      "path": "Packages/CoreMobileServices",
-      "targets": [
-        { "name": "Keys", "type": "regular" },
-        { "name": "CoreMobileServices", "type": "regular" },
-        { "name": "CoreMobileServicesTests", "type": "test" }
-      ]
-    }
-  ],
-  "headerFileURL": "header.swift"
-}
+### Backward Compatibility
+
+Old config format with `targetsParameters` dict still works:
+
+```yaml
+# OLD FORMAT (still supported)
+targetsParameters:
+  ModuleA:
+    - 'exclude: ["__Snapshots__"]'
+    - 'resources: [.process("Files")]'
+  ModuleB:
+    - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
+
+# NEW FORMAT (recommended)
+packageDirectoryTargets:
+  - path: Sources/Modules
+    targets:
+      - name: ModuleA
+        type: regular
+        parameters:
+          - 'exclude: ["__Snapshots__"]'
+          - 'resources: [.process("Files")]'
+      - name: ModuleB
+        type: regular
+        parameters:
+          - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
 ```
 
-If a new configuration filename is used as explained in #basic-usage step 1. It will be saved so that you will not be required to input the configuration fileName at each launch. 
+Both formats generate identical output. Inline `parameters` is preferred (simpler migration path).
 
-### Header File
-
-The content of `headerFileURL` from the configuration will be added to the top of the generated `Package.swift`.
-
-I advise adding all required `dependencies` and **Test Targets**, **System Librarys**, **Executable Targets** and **Binary Targets**(https://github.com/mackoj/PackageGeneratorPlugin/issues/8).
-
-```swift
-// swift-tools-version:5.7
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
-import Foundation
-import PackageDescription
-
-var package = Package(
-  name: "project",
-  defaultLocalization: "en",
-  platforms: [
-    .macOS(.v12),
-    .iOS("15.0")
-  ],
-  products: [
-    .executable(name: "server", targets: ["server"]),
-    .executable(name: "parse", targets: ["ParserRunner"]),
-  ],
-  dependencies: [
-    .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "0.3.0"),
-    .package(url: "https://github.com/mackoj/SchemeGeneratorPlugin.git", from: "0.5.5"),
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.45.0"),
-  ],
-  targets: [
-    // MARK: -
-    // MARK: Test Targets
-    .testTarget(
-      name: "MyProjectTests",
-      dependencies: [
-        "MyProject",
-      ]
-    ),
-    
-    // MARK: -
-    // MARK: Executables
-      .executableTarget(
-        name: "server",
-        path: "Sources/Backend/Sources/Run"
-      ),
-    .executableTarget(
-      name: "ParserRunner",
-      path: "Sources/App/Parsers/Runner"
-    ),
-  ]
-)
-```
+## Advanced Features
 
 ### Exported Files
 
-When `generateExportedFiles` is set to `true` in the configuration, the plugin will generate an `exported.swift` file in each package directory that contains `@_exported import` statements for all local dependencies of that package.
+Generate `exported.swift` re-exporting local dependencies:
 
-This improves developer experience by automatically re-exporting local dependencies, so users don't need to manually import all the dependencies they need in their code.
-
-For example, if package `MyPackage1` depends on `Chip` and `Logger`, the generated `exported.swift` will contain:
-
-```swift
-// This file is auto-generated by PackageGeneratorPlugin
-// It exports all local dependencies for this package
-
-@_exported import Chip
-@_exported import Logger
+```yaml
+generateExportedFiles: true
+exportedFilesRelativePath: Generated
 ```
 
-In dry run mode, the files will be named `exported_generated.swift` to allow you to review the output before enabling the feature.
+For target `Auth` importing `Core`, generates:
+```swift
+// Generated/exported.swift
+@_exported import Core
+```
 
-#### Exported Files Relative Path
+Useful for reducing boilerplate in modular architectures.
 
-You can customize where the exported files are placed within each package by setting the `exportedFilesRelativePath` parameter. This allows for better organization of your generated files.
+### Pragma Mark Grouping
 
-- If not specified (or `null`), exported files are placed directly in each package's root directory
-- If specified (e.g., `"Generated"`), exported files are placed in the specified subdirectory within each package
+Group targets by path with section comments:
 
-For example, with `"exportedFilesRelativePath": "Generated"`, the exported.swift file for a package at `Sources/MyPackage/` would be created at `Sources/MyPackage/Generated/exported.swift`.
+```yaml
+pragmaMark: true
+```
 
-## CI
+Output:
+```swift
+// MARK: -
+// MARK: Core
+.target(name: "Core", ...),
+.testTarget(name: "CoreTests", ...),
 
-You can use it in CI to automatically generate your `Package.swift`.
+// MARK: -
+// MARK: Features
+.target(name: Auth", ...),
+.testTarget(name: "AuthTests", ...),
+```
 
-`swift package plugin --allow-writing-to-package-directory package-generator`
+### Dependency Weight
+
+Show dependency count + mark heaviest:
+
+```yaml
+leafInfo: true
+```
+
+Output:
+```swift
+.target(name: "Core", dependencies: [...]),      // 3|2
+.target(name: "Auth", dependencies: [...]),      // 5|3 🚛
+```
+
+First number = total deps, second = local deps. 🚛 = highest local count.
+
+### Unused Target Detection
+
+Warn about targets never imported:
+
+```yaml
+unusedThreshold: 0
+```
+
+Logs: `📦 UnusedModule is used 0 times`
+
+## Examples
+
+### Large Modular Project
+
+```yaml
+pragmaMark: true
+generateExportedFiles: true
+exportedFilesRelativePath: Generated
+headerFileURL: PackageHeader.swift
+spaces: 4
+leafInfo: true
+unusedThreshold: 1
+
+packageDirectoryTargets:
+  - path: Packages/Core
+    targets:
+      - name: Foundation
+      - name: Models
+        parameters:
+          - 'resources: [.process("Assets.xcassets")]'
+      - name: CoreTests
+        type: test
+  
+  - path: Packages/Features
+    targets:
+      - name: Auth
+        parameters:
+          - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
+      - name: Cart
+      - name: FeaturesTests
+        type: test
+
+exclusions:
+  imports:
+    - CrashlyticsCore
+```
+
+### TCA + SwiftUI Project
+
+```yaml
+pragmaMark: true
+spaces: 4
+headerFileURL: PackageHeader.swift
+
+packageDirectoryTargets:
+  - path: Sources/App
+    targets:
+      - name: AppCore
+        parameters:
+          - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
+          - 'swiftSettings: [.defaultIsolation(MainActor.self)]'
+      - name: AppUI
+      - name: AppTests
+        type: test
+
+  - path: Sources/Features/Home
+    targets:
+      - name: HomeFeature
+      - name: HomeUI
+      - name: HomeTests
+        type: test
+```
+
+## Diagnostics
+
+Errors appear in Xcode Report Navigator:
+
+- `❌ Error: Config file not found` — no `packageGenerator.{yaml,yml,json}` at root
+- `❌ Error: YAML decode failed` — invalid YAML syntax
+- `ℹ️ Dropped unresolved import 'SomeLib'` — import not in local targets or auto-discovered/mapped products; add a `mappers.imports` entry if it's a real dependency
+- `📦 UnusedModule is used 0 times` — target never imported by others
+
+Use `verbose: "all"` for full diagnostics, `verbose: "cli"` or `verbose: "plugin"` for targeted output.
 
 ## FAQ
 
-> Why is the plug-in is not visible in Xcode?
+**Q: Why is my target path not found?**  
+A: Check `packageDirectoryTargets[].path`. Plugin uses shortest-path logic in Sources/ and Tests/. If multiple folders match target name, shortest depth wins.
 
-Plug-in can work if you do a right click on your project package and only if the `Resolves Packages` is passing without issue. 
+**Q: My old config broke after upgrade.**  
+A: V2 supports old `targetsParameters` dict—no changes needed. Migrate to inline `parameters` when ready.
 
-> Why does the plugin have an executable dependency?
+**Q: How do I exclude Apple frameworks?**  
+A: They're auto-excluded via the built-in SDK list. No configuration needed. The `exclusions.apple` config key from older versions is silently ignored if present.
 
-Because we cannot import other packages in an SPM Plugin and we need [swift-syntax](https://github.com/apple/swift-syntax.git) to parse code and extract imports.
+**Q: Can I use both YAML and JSON?**  
+A: Yes. Plugin auto-detects by filename. Change file extension to switch formats.
 
-> It always creates an invalid `Package.swift` file.
+**Q: What if a test target doesn't match a regular target?**  
+A: Falls back to first available regular target in same group.
 
-Look at the `Report Navigator` in Xcode it might be due to imports that don't exist or that require the use of [mappers-imports](#configuration). 
+## CI/CD
 
-> Why doesn't it use a hidden file like `.packageGenerator` for configuring the tool?
+```bash
+# Generate with all validations
+swift package plugin --allow-writing-to-package-directory package-generator
 
-Because it would not be visible in Xcode and this file might need to be edited often. But [you can change this](#configuration) if you want by giving the `--confFile` argument when using the tool.
+# With custom config file
+swift package plugin --allow-writing-to-package-directory package-generator --confFile myconfig.yaml
+```
+
+Fails if Package.swift has errors or config invalid.
+
+## Troubleshooting
+
+- **Plugin not visible in Xcode?** Run "Resolve Packages" in Package.swift.
+- **YAML not working?** Ensure `Yams` dependency in plugin Package.swift.
+- **dry-run keeps running?** Check `dryRun: false` in config + check error logs.
+
+## License
+
+MIT

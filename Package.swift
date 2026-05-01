@@ -6,24 +6,28 @@ import PackageDescription
 let package = Package(
   name: "PackageGeneratorPlugin",
   platforms: [
-    .macOS(.v12),
+    .macOS(.v13),
   ],
   products: [
     .plugin(name: "PackageGenerator", targets: ["Package Generator"]),
   ],
   dependencies: [
     .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.1"),
+    // .package(path: "/Users/mac-JMACKO01/Developer/PackageGeneratorCLI"),
   ],
   targets: [
-    .binaryTarget(
-      name: "package-generator-cli",
-      url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.6.1/package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
-      checksum: "8eb833ab6ae853c82f67657c1c8fd27cbcbe30dfc7667893fe2a17a9a72622fd"
-    ),
-    //.binaryTarget(
-    //  name: "package-generator-cli",
-    //  path: "../PackageGeneratorCLI/package-generator-cli-arm64-apple-macosx.artifactbundle.zip"
-    //),
+// The code that is used in the official version
+   .binaryTarget(
+     name: "package-generator-cli",
+     url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.7.0/package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
+     checksum: "a74560dd57e08a9e444ce0b1a3200a63a665a189ac5f55717d615763f0076717"
+   ),
+
+// To test after building the artifact
+//      .binaryTarget(
+//        name: "package-generator-cli",
+//        path: "../PackageGeneratorCLI/package-generator-cli-arm64-apple-macosx.artifactbundle.zip"
+//      ),
     .executableTarget(
       name: "yaml-converter",
       dependencies: [
@@ -43,10 +47,11 @@ let package = Package(
         ]
       ),
       dependencies: [
-        .target(name: "package-generator-cli"),
+        .product(name: "package-generator-cli", package: "PackageGeneratorCLI"),
         .target(name: "yaml-converter"),
       ],
       path: "Plugins/PackageGenerator"
     ),
-  ]
+  ],
+  swiftLanguageModes: [.v6]
 )

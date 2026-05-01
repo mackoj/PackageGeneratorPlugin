@@ -1,0 +1,22 @@
+# Example: Basic Setup
+
+verbose: false
+dryRun: true
+pragmaMark: false
+spaces: 2
+headerFileURL: PackageHeader.swift
+
+packageDirectoryTargets:
+  - path: Sources/Core
+    targets:
+      - name: Foundation
+        type: regular
+      - name: CoreTests
+        type: test
+  
+  - path: Sources/Features
+    targets:
+      - name: Auth
+        type: regular
+      - name: AuthTests
+        type: test

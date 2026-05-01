@@ -1,0 +1,67 @@
+# Example: Large Modular Project with all V2 Features
+
+verbose: false
+dryRun: false
+pragmaMark: true
+generateExportedFiles: true
+exportedFilesRelativePath: Generated
+headerFileURL: PackageHeader.swift
+spaces: 4
+leafInfo: true
+keepTempFiles: false
+unusedThreshold: 1
+silenceUnresolvedImportWarnings: false
+
+packageDirectoryTargets:
+  - path: Packages/CoreServices
+    targets:
+      - name: Foundation
+        type: regular
+      - name: Models
+        type: regular
+        parameters:
+          - 'resources: [.process("Assets.xcassets")]'
+      - name: Database
+        type: regular
+        exclude: ["__Snapshots__"]
+      - name: CoreTests
+        type: test
+  
+  - path: Packages/Features
+    targets:
+      - name: Auth
+        type: regular
+        parameters:
+          - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
+      - name: Cart
+        type: regular
+      - name: Catalog
+        type: regular
+        parameters:
+          - 'resources: [.process("Catalogs")]'
+          - 'exclude: ["Legacy"]'
+      - name: FeaturesTests
+        type: test
+  
+  - path: Packages/Macro
+    targets:
+      - name: MacroImpl
+        type: macro
+
+mappers:
+  imports:
+    ComposableArchitecture: '.product(name: "ComposableArchitecture", package: "swift-composable-architecture")'
+    Alamofire: '.product(name: "Alamofire", package: "Alamofire")'
+    KeychainAccess: '.product(name: "KeychainAccess", package: "KeychainAccess")'
+  
+  targets:
+    Packages/CoreServices/Database: PersistenceLayer
+
+exclusions:
+  apple: []
+  imports:
+    - CrashlyticsCore
+    - PrivateAnalyticsLib
+  targets:
+    - HelperBinary
+    - ParserCLI

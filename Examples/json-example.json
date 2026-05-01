@@ -1,0 +1,56 @@
+{
+  "verbose": false,
+  "dryRun": true,
+  "pragmaMark": true,
+  "generateExportedFiles": false,
+  "headerFileURL": "PackageHeader.swift",
+  "spaces": 2,
+  "packageDirectoryTargets": [
+    {
+      "path": "Sources/Core",
+      "targets": [
+        {
+          "name": "Foundation",
+          "type": "regular"
+        },
+        {
+          "name": "Models",
+          "type": "regular",
+          "parameters": [
+            "resources: [.process(\"Assets.xcassets\")]"
+          ]
+        },
+        {
+          "name": "CoreTests",
+          "type": "test"
+        }
+      ]
+    },
+    {
+      "path": "Sources/Features",
+      "targets": [
+        {
+          "name": "Auth",
+          "type": "regular",
+          "parameters": [
+            "swiftSettings: [.enableUpcomingFeature(\"StrictConcurrency\")]"
+          ]
+        },
+        {
+          "name": "AuthTests",
+          "type": "test"
+        }
+      ]
+    }
+  ],
+  "mappers": {
+    "imports": {
+      "ComposableArchitecture": ".product(name: \"ComposableArchitecture\", package: \"swift-composable-architecture\")"
+    }
+  },
+  "exclusions": {
+    "apple": [],
+    "imports": [],
+    "targets": []
+  }
+}
