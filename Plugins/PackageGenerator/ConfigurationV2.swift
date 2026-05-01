@@ -1,10 +1,49 @@
 import Foundation
 
+// MARK: - VerboseMode
+
+/// Controls which components emit verbose diagnostic output.
+/// YAML accepts a string ("none" | "plugin" | "cli" | "all") or a legacy bool (true = "all", false = "none").
+enum VerboseMode: Equatable {
+  case none
+  case plugin
+  case cli
+  case all
+}
+
+extension VerboseMode: Codable {
+  init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let string = try? container.decode(String.self) {
+      switch string {
+      case "plugin": self = .plugin
+      case "cli":    self = .cli
+      case "all":    self = .all
+      default:       self = .none
+      }
+    } else if let bool = try? container.decode(Bool.self) {
+      self = bool ? .all : .none
+    } else {
+      self = .none
+    }
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch self {
+    case .none:   try container.encode("none")
+    case .plugin: try container.encode("plugin")
+    case .cli:    try container.encode("cli")
+    case .all:    try container.encode("all")
+    }
+  }
+}
+
 /// V2 Configuration Schema - fully normalized internal representation.
 /// Supports both old (targetsParameters dict) and new (inline parameters) formats.
 struct ConfigurationV2: Codable {
   // Settings
-  let verbose: Bool
+  let verbose: VerboseMode
   let dryRun: Bool
   let pragmaMark: Bool
   let generateExportedFiles: Bool
@@ -22,7 +61,15 @@ struct ConfigurationV2: Codable {
   
   // Exclusions
   let exclusions: Exclusions
-  
+
+  // MARK: - Computed Verbose Helpers
+
+  /// `true` when plugin-side diagnostics should be verbose (mode is `.plugin` or `.all`).
+  var verbosePlugin: Bool { verbose == .plugin || verbose == .all }
+
+  /// `true` when the CLI subprocess should run in verbose mode (mode is `.cli` or `.all`).
+  var verboseCLI: Bool { verbose == .cli || verbose == .all }
+
   // MARK: - Nested Types
   
   struct DirectoryGroup: Codable {
@@ -110,7 +157,7 @@ struct ConfigurationV2: Codable {
   // MARK: - Initialization
   
   init(
-    verbose: Bool = false,
+    verbose: VerboseMode = .none,
     dryRun: Bool = false,
     pragmaMark: Bool = false,
     generateExportedFiles: Bool = false,
@@ -161,7 +208,7 @@ struct ConfigurationV2: Codable {
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     
-    self.verbose = try container.decodeIfPresent(Bool.self, forKey: .verbose) ?? false
+    self.verbose = try container.decodeIfPresent(VerboseMode.self, forKey: .verbose) ?? .none
     self.dryRun = try container.decodeIfPresent(Bool.self, forKey: .dryRun) ?? false
     self.pragmaMark = try container.decodeIfPresent(Bool.self, forKey: .pragmaMark) ?? false
     self.generateExportedFiles = try container.decodeIfPresent(Bool.self, forKey: .generateExportedFiles) ?? false

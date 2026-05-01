@@ -44,8 +44,7 @@ func resolveTargetPaths(
       
       resolvedPaths[targetSpec.name] = fullTargetPath
       
-      if config.verbose {
-        Diagnostics.emit(.remark, "Resolved target '\(targetSpec.name)' to '\(fullTargetPath)'")
+      if config.verbosePlugin {
       }
     }
   }
@@ -74,13 +73,13 @@ func linkTestTargets(
       } else if let firstRegular = regularTargets.first {
         testToRegularMapping[testTarget.name] = firstRegular.name
         fallbackCount += 1
-        if config.verbose {
+        if config.verbosePlugin {
           Diagnostics.emit(
             .warning,
             "Test target '\(testTarget.name)' has no matching regular target '\(baseName)'. Attaching to '\(firstRegular.name)'."
           )
         }
-      } else if config.verbose {
+      } else if config.verbosePlugin {
         Diagnostics.emit(.warning, "Test target '\(testTarget.name)' has no corresponding regular target in group.")
       }
     }
@@ -112,8 +111,7 @@ func discoverExternalDeps(
       let formattedProduct = ".product(name: \"\(productName)\", package: \"\(packageIdentity)\")"
       externalProducts[productName] = formattedProduct
       
-      if config.verbose {
-        Diagnostics.emit(.remark, "Discovered external product: \(productName) from \(packageIdentity)")
+      if config.verbosePlugin {
       }
     }
   }
@@ -238,7 +236,7 @@ func runCLI(
     "--input-file-url", inputURL.path,
     "--package-directory", packageDir.path,
   ]
-  if config.verbose { args.append("--verbose") }
+  if config.verboseCLI { args.append("--verbose") }
 
   let process = Process()
   process.executableURL = tool.url
@@ -246,7 +244,7 @@ func runCLI(
 
   // In non-verbose mode suppress CLI stdout/stderr; on failure the error status is still caught below
   let suppressPipe = Pipe()
-  if !config.verbose {
+  if !config.verboseCLI {
     process.standardOutput = suppressPipe
     process.standardError = suppressPipe
   }

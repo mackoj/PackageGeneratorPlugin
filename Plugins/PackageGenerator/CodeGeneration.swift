@@ -205,8 +205,7 @@ func writeOutput(
 
   do {
     try finalContent.write(to: outputFile, atomically: true, encoding: .utf8)
-    if config.verbose {
-      Diagnostics.emit(.remark, "Wrote \(config.dryRun ? "dry-run" : "output") to \(outputFile.path)")
+    if config.verbosePlugin {
     } else {
       var summary = "Generated \(outputName) — \(nonTestCount) packages"
       if fallbackCount > 0 { summary += ", \(fallbackCount) test-target fallbacks (use verbose for details)" }

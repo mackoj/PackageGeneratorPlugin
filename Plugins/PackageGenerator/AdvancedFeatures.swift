@@ -50,8 +50,7 @@ func generateExportedFiles(
     
     do {
       try content.write(to: exportedFileURL, atomically: true, encoding: .utf8)
-      if config.verbose {
-        Diagnostics.emit(.remark, "Generated exported.swift for target '\(target.name)'")
+      if config.verbosePlugin {
       }
     } catch {
       Diagnostics.emit(.warning, "Failed to write exported file for target '\(target.name)': \(error)")

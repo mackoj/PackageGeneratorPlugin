@@ -52,7 +52,7 @@ struct PackageGeneratorV2 {
           rawImports: rawImports,
           targetName: targetSpec.name,
           exclusions: config.exclusions,
-          verbose: config.verbose
+          verbose: config.verbosePlugin
         )
 
         let parsed = ParsedPackage(
@@ -68,7 +68,7 @@ struct PackageGeneratorV2 {
 
         parsedPackages.append(parsed)
 
-        if config.verbose {
+        if config.verbosePlugin {
           Diagnostics.emit(.remark, "ParsedPackage '\(parsed.name)': \(parsed.dependencies.count) deps, \(parsed.parameters?.count ?? 0) params")
         }
       }
@@ -79,7 +79,7 @@ struct PackageGeneratorV2 {
     generateExportedFiles(parsedPackages, exportedFilesRelativePath: config.exportedFilesRelativePath, config, context)
 
     if let threshold = config.unusedThreshold {
-      detectUnusedTargets(parsedPackages, unusedThreshold: threshold, verbose: config.verbose)
+      detectUnusedTargets(parsedPackages, unusedThreshold: threshold, verbose: config.verbosePlugin)
     }
 
     let weights = computeDependencyWeight(parsedPackages)
@@ -119,7 +119,7 @@ struct PackageGeneratorV2 {
 // MARK: - Logging Helper
 
 private func logVerbose(_ message: String, _ config: ConfigurationV2) {
-  if config.verbose {
+  if config.verbosePlugin {
     Diagnostics.emit(.remark, message)
   }
 }
