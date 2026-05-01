@@ -1,0 +1,33 @@
+# Example: Old Config Format (Still Supported)
+
+verbose: false
+dryRun: true
+spaces: 2
+headerFileURL: PackageHeader.swift
+
+packageDirectoryTargets:
+  - path: Sources/Core
+    targets:
+      - name: Foundation
+        type: regular
+      - name: Models
+        type: regular
+      - name: CoreTests
+        type: test
+  
+  - path: Sources/Features
+    targets:
+      - name: Auth
+        type: regular
+      - name: AuthTests
+        type: test
+
+# Legacy format - still works!
+targetsParameters:
+  Models:
+    - 'resources: [.process("Assets.xcassets")]'
+    - 'exclude: ["__Snapshots__"]'
+  
+  Auth:
+    - 'swiftSettings: [.enableUpcomingFeature("StrictConcurrency")]'
+    - 'resources: [.process("Resources")]'
