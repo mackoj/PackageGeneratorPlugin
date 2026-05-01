@@ -47,7 +47,7 @@ let package = Package(
         ]
       ),
       dependencies: [
-        .product(name: "package-generator-cli", package: "PackageGeneratorCLI"),
+        .target(name: "package-generator-cli"),
         .target(name: "yaml-converter"),
       ],
       path: "Plugins/PackageGenerator"
