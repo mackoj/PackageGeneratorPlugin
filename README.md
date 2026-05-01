@@ -1,4 +1,4 @@
-# PackageGenerator V2
+# PackageGenerator
 
 Auto-generate complex multi-target SPM `Package.swift`. Read source imports, resolve dependencies, build targets. Works with heavily modularized projects + TCA.
 
