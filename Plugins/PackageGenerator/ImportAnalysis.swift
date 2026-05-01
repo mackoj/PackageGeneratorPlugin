@@ -4,21 +4,17 @@ import PackagePlugin
 // MARK: - Phase 3: Import Analysis
 
 /// Filters raw imports for a target.
-/// Drops: apple SDKs, explicitly excluded imports, and the target's own module name.
-/// Keeps only imports found in `validTargets ∪ externalProducts` and warns on unknown ones.
+/// Drops: Apple SDKs, explicitly excluded imports, and the target's own module name.
+/// All other imports are kept and passed through to code generation.
 /// Returns a sorted list for deterministic output.
 func filterImports(
   rawImports: [String],
   targetName: String,
-  validTargets: Set<String>,
-  externalProducts: Set<String>,
   exclusions: ConfigurationV2.Exclusions,
-  silenceWarnings: Bool,
   verbose: Bool
 ) -> [String] {
   let appleExclusions = exclusions.resolvedAppleExclusions
   let importExclusions = Set(exclusions.imports)
-  let validSet = validTargets.union(externalProducts)
 
   var filtered: [String] = []
 
@@ -42,15 +38,7 @@ func filterImports(
       continue
     }
 
-    // Keep only known targets and external products
-    if validSet.contains(importName) {
-      filtered.append(importName)
-    } else if !silenceWarnings {
-      Diagnostics.emit(
-        .warning,
-        "Dropped unresolved import '\(importName)'. If it's a system framework, ignore this."
-      )
-    }
+    filtered.append(importName)
   }
 
   return filtered.sorted()

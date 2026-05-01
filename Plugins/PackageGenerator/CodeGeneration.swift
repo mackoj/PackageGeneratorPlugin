@@ -42,6 +42,7 @@ func pragmaMarkGroupName(_ path: String, fallback: String) -> String {
 func renderSingleTarget(
   _ target: ParsedPackage,
   config: ConfigurationV2,
+  externalDeps: [String: String],
   leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)]
 ) -> String {
   let s1 = String(repeating: " ", count: config.spaces)
@@ -50,11 +51,12 @@ func renderSingleTarget(
 
   let blockType = target.isMacro ? "macro" : (target.isTest ? "testTarget" : "target")
 
-  // Build multi-line dependencies section with mappers applied at render time
+  // Build multi-line dependencies section — auto-discovered external deps take priority,
+  // with mappers.imports already merged in by discoverExternalDeps.
   var depsStr = ""
   if !target.dependencies.isEmpty {
     let depLines = target.dependencies
-      .map { dep in config.mappers.imports[dep, default: "\"\(dep)\""] }
+      .map { dep in externalDeps[dep, default: "\"\(dep)\""] }
       .sorted(by: <)
       .map { "\(s3)\($0)" }
     depsStr = "\n\(s2)dependencies: [\n" + depLines.joined(separator: ",\n") + "\n\(s2)],"
@@ -119,9 +121,9 @@ func generateProductsSection(
 func generateTargetsSection(
   parsedPackages: [ParsedPackage],
   config: ConfigurationV2,
+  externalDeps: [String: String],
   leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)]
 ) -> String {
-  // Sort: by pragma group, then regular before test/macro, then by name
   let sorted = parsedPackages.sorted { a, b in
     let ag = pragmaMarkGroupName(a.path, fallback: a.name)
     let bg = pragmaMarkGroupName(b.path, fallback: b.name)
@@ -148,7 +150,7 @@ func generateTargetsSection(
         lastGroup = group
       }
     }
-    last = renderSingleTarget(target, config: config, leafWeights: leafWeights)
+    last = renderSingleTarget(target, config: config, externalDeps: externalDeps, leafWeights: leafWeights)
   }
 
   if !last.isEmpty {
@@ -163,6 +165,7 @@ func writeOutput(
   _ headerContent: String,
   _ parsedPackages: [ParsedPackage],
   config: ConfigurationV2,
+  externalDeps: [String: String],
   context: PackagePlugin.PluginContext,
   leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)],
   fallbackCount: Int = 0
@@ -173,7 +176,7 @@ func writeOutput(
 
   let nonTestCount = parsedPackages.filter { !$0.isTest }.count
   let productsSection = generateProductsSection(parsedPackages: parsedPackages, config: config)
-  let targetsSection = generateTargetsSection(parsedPackages: parsedPackages, config: config, leafWeights: leafWeights)
+  let targetsSection = generateTargetsSection(parsedPackages: parsedPackages, config: config, externalDeps: externalDeps, leafWeights: leafWeights)
 
   let finalContent = headerContent
     + "// MARK: - Generated \(nonTestCount) packages\n\n"

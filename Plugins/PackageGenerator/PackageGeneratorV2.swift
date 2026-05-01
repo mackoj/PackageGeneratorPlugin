@@ -23,11 +23,6 @@ struct PackageGeneratorV2 {
 
     // Phase 3: Import Analysis — invoke CLI once for all targets
     logVerbose("Phase 3: Import Analysis (CLI invocation)", config)
-    let localTargetNames = Set(
-      config.packageDirectoryTargets.flatMap { $0.targets.map(\.name) }
-    ).union(context.package.targets.map(\.name))
-    let externalProductNames = Set(externalDeps.keys)
-
     let cliResults = runCLI(
       config: config,
       context: context,
@@ -56,10 +51,7 @@ struct PackageGeneratorV2 {
         let filtered = filterImports(
           rawImports: rawImports,
           targetName: targetSpec.name,
-          validTargets: localTargetNames,
-          externalProducts: externalProductNames,
           exclusions: config.exclusions,
-          silenceWarnings: config.silenceUnresolvedImportWarnings,
           verbose: config.verbose
         )
 
@@ -100,7 +92,7 @@ struct PackageGeneratorV2 {
     // Render & Write
     logVerbose("Rendering output", config)
     let header = injectHeader(headerFileURL: config.headerFileURL, context)
-    writeOutput(header, parsedPackages, config: config, context: context, leafWeights: weights, fallbackCount: fallbackCount)
+    writeOutput(header, parsedPackages, config: config, externalDeps: externalDeps, context: context, leafWeights: weights, fallbackCount: fallbackCount)
 
     logVerbose("PackageGeneratorV2 pipeline completed", config)
   }

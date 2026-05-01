@@ -14,8 +14,6 @@ struct ConfigurationV2: Codable {
   let keepTempFiles: Bool
   let leafInfo: Bool
   let unusedThreshold: Int?
-  let silenceUnresolvedImportWarnings: Bool
-  
   // Directories and targets
   let packageDirectoryTargets: [DirectoryGroup]
   
@@ -39,18 +37,37 @@ struct ConfigurationV2: Codable {
     let exclude: [String]?
     let parameters: [String]?
     let regularTargetName: String?
-    
+
     enum TargetType: String, Codable {
       case regular
       case test
       case macro
-      
+
       var defaultFolder: String {
         switch self {
         case .regular, .macro: return "Sources"
         case .test: return "Tests"
         }
       }
+    }
+
+    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil) {
+      self.name = name
+      self.type = type
+      self.path = path
+      self.exclude = exclude
+      self.parameters = parameters
+      self.regularTargetName = regularTargetName
+    }
+
+    init(from decoder: Decoder) throws {
+      let c = try decoder.container(keyedBy: CodingKeys.self)
+      name = try c.decode(String.self, forKey: .name)
+      type = try c.decodeIfPresent(TargetType.self, forKey: .type) ?? .regular
+      path = try c.decodeIfPresent(String.self, forKey: .path)
+      exclude = try c.decodeIfPresent([String].self, forKey: .exclude)
+      parameters = try c.decodeIfPresent([String].self, forKey: .parameters)
+      regularTargetName = try c.decodeIfPresent(String.self, forKey: .regularTargetName)
     }
   }
   
@@ -93,7 +110,6 @@ struct ConfigurationV2: Codable {
     keepTempFiles: Bool = false,
     leafInfo: Bool = false,
     unusedThreshold: Int? = nil,
-    silenceUnresolvedImportWarnings: Bool = false,
     packageDirectoryTargets: [DirectoryGroup] = [],
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions()
@@ -108,7 +124,6 @@ struct ConfigurationV2: Codable {
     self.keepTempFiles = keepTempFiles
     self.leafInfo = leafInfo
     self.unusedThreshold = unusedThreshold
-    self.silenceUnresolvedImportWarnings = silenceUnresolvedImportWarnings
     self.packageDirectoryTargets = packageDirectoryTargets
     self.mappers = mappers
     self.exclusions = exclusions
@@ -127,7 +142,6 @@ struct ConfigurationV2: Codable {
     case keepTempFiles
     case leafInfo
     case unusedThreshold
-    case silenceUnresolvedImportWarnings
     case packageDirectoryTargets
     case mappers
     case exclusions
@@ -147,7 +161,6 @@ struct ConfigurationV2: Codable {
     self.keepTempFiles = try container.decodeIfPresent(Bool.self, forKey: .keepTempFiles) ?? false
     self.leafInfo = try container.decodeIfPresent(Bool.self, forKey: .leafInfo) ?? false
     self.unusedThreshold = try container.decodeIfPresent(Int.self, forKey: .unusedThreshold)
-    self.silenceUnresolvedImportWarnings = try container.decodeIfPresent(Bool.self, forKey: .silenceUnresolvedImportWarnings) ?? false
     self.mappers = try container.decodeIfPresent(Mappers.self, forKey: .mappers) ?? Mappers()
     self.exclusions = try container.decodeIfPresent(Exclusions.self, forKey: .exclusions) ?? Exclusions()
     
@@ -191,7 +204,6 @@ struct ConfigurationV2: Codable {
     try container.encode(keepTempFiles, forKey: .keepTempFiles)
     try container.encode(leafInfo, forKey: .leafInfo)
     try container.encodeIfPresent(unusedThreshold, forKey: .unusedThreshold)
-    try container.encode(silenceUnresolvedImportWarnings, forKey: .silenceUnresolvedImportWarnings)
     try container.encode(packageDirectoryTargets, forKey: .packageDirectoryTargets)
     try container.encode(mappers, forKey: .mappers)
     try container.encode(exclusions, forKey: .exclusions)

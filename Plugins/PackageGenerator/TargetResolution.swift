@@ -91,6 +91,9 @@ func linkTestTargets(
 
 /// Discovers external dependencies from SPM context.
 /// Queries context.package.dependencies and extracts all products.
+/// Uses `Package.id` (the URL-derived identity) rather than `displayName` (the
+/// package's self-declared name) so that generated `.product(name:package:)`
+/// references match the identity SPM uses to resolve packages.
 func discoverExternalDeps(
   _ config: ConfigurationV2,
   _ context: PackagePlugin.PluginContext
@@ -100,14 +103,17 @@ func discoverExternalDeps(
   for dependency in context.package.dependencies {
     for product in dependency.package.products {
       let productName = product.name
-      let packageName = dependency.package.displayName
+      // `Package.id` is the URL/path-derived identity (e.g. "vitamin-play-apple-releases"),
+      // which is what SPM requires in `.product(name:package:)`. `displayName` is the
+      // package's self-declared name and may differ (e.g. "VitaminPlay").
+      let packageIdentity = dependency.package.id
       
       // Format: .product(name: "...", package: "...")
-      let formattedProduct = ".product(name: \"\(productName)\", package: \"\(packageName)\")"
+      let formattedProduct = ".product(name: \"\(productName)\", package: \"\(packageIdentity)\")"
       externalProducts[productName] = formattedProduct
       
       if config.verbose {
-        Diagnostics.emit(.remark, "Discovered external product: \(productName) from \(packageName)")
+        Diagnostics.emit(.remark, "Discovered external product: \(productName) from \(packageIdentity)")
       }
     }
   }
