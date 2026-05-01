@@ -75,9 +75,17 @@ struct ConfigurationV2: Codable {
     let imports: [String: String]
     let targets: [String: String]
     
+    private enum CodingKeys: String, CodingKey { case imports, targets }
+    
     init(imports: [String: String] = [:], targets: [String: String] = [:]) {
       self.imports = imports
       self.targets = targets
+    }
+    
+    init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      imports = try container.decodeIfPresent([String: String].self, forKey: .imports) ?? [:]
+      targets = try container.decodeIfPresent([String: String].self, forKey: .targets) ?? [:]
     }
   }
   
@@ -85,9 +93,17 @@ struct ConfigurationV2: Codable {
     let imports: [String]
     let targets: [String]
     
+    private enum CodingKeys: String, CodingKey { case imports, targets }
+    
     init(imports: [String] = [], targets: [String] = []) {
       self.imports = imports
       self.targets = targets
+    }
+    
+    init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      imports = try container.decodeIfPresent([String].self, forKey: .imports) ?? []
+      targets = try container.decodeIfPresent([String].self, forKey: .targets) ?? []
     }
   }
   
