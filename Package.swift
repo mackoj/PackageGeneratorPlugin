@@ -15,15 +15,16 @@ let package = Package(
     .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.1"),
   ],
   targets: [
+//    .binaryTarget(name: "package-generator-cli", path: "/Users/mac-JMACKO01/Developer/PackageGeneratorCLI"),
     .binaryTarget(
       name: "package-generator-cli",
       url: "https://github.com/mackoj/PackageGeneratorCLI/releases/download/0.6.1/package-generator-cli-arm64-apple-macosx.artifactbundle.zip",
       checksum: "8eb833ab6ae853c82f67657c1c8fd27cbcbe30dfc7667893fe2a17a9a72622fd"
     ),
-    //.binaryTarget(
-    //  name: "package-generator-cli",
-    //  path: "../PackageGeneratorCLI/package-generator-cli-arm64-apple-macosx.artifactbundle.zip"
-    //),
+//      .binaryTarget(
+//        name: "package-generator-cli",
+//        path: "../PackageGeneratorCLI/package-generator-cli-arm64-apple-macosx.artifactbundle.zip"
+//      ),
     .executableTarget(
       name: "yaml-converter",
       dependencies: [
@@ -48,5 +49,6 @@ let package = Package(
       ],
       path: "Plugins/PackageGenerator"
     ),
-  ]
+  ],
+  swiftLanguageModes: [.v6]
 )
