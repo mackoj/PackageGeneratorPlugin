@@ -111,7 +111,7 @@ struct ConfigurationV2: Codable {
   
   init(
     verbose: Bool = false,
-    dryRun: Bool = true,
+    dryRun: Bool = false,
     pragmaMark: Bool = false,
     generateExportedFiles: Bool = false,
     exportedFilesRelativePath: String? = nil,
@@ -162,7 +162,7 @@ struct ConfigurationV2: Codable {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     
     self.verbose = try container.decodeIfPresent(Bool.self, forKey: .verbose) ?? false
-    self.dryRun = try container.decodeIfPresent(Bool.self, forKey: .dryRun) ?? true
+    self.dryRun = try container.decodeIfPresent(Bool.self, forKey: .dryRun) ?? false
     self.pragmaMark = try container.decodeIfPresent(Bool.self, forKey: .pragmaMark) ?? false
     self.generateExportedFiles = try container.decodeIfPresent(Bool.self, forKey: .generateExportedFiles) ?? false
     self.exportedFilesRelativePath = try container.decodeIfPresent(String.self, forKey: .exportedFilesRelativePath)
