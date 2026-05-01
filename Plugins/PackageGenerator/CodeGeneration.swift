@@ -39,10 +39,17 @@ func pragmaMarkGroupName(_ path: String, fallback: String) -> String {
 
 /// Renders a single target as a `.target()`, `.testTarget()`, or `.macro()` block.
 /// Matches V1's `fakeTargetToSwiftCode` format exactly.
+///
+/// Resolution priority per import:
+///   1. In `externalDeps`          → `.product(name:package:)` reference
+///   2. In `allLocalTargetNames`   → `"TargetName"` string literal
+///   3. In Apple SDK / exclusions  → silently skipped
+///   4. Otherwise                  → warning emitted, dep skipped
 func renderSingleTarget(
   _ target: ParsedPackage,
   config: ConfigurationV2,
   externalDeps: [String: String],
+  allLocalTargetNames: Set<String>,
   leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)]
 ) -> String {
   let s1 = String(repeating: " ", count: config.spaces)
@@ -50,16 +57,27 @@ func renderSingleTarget(
   let s3 = String(repeating: " ", count: config.spaces * 3)
 
   let blockType = target.isMacro ? "macro" : (target.isTest ? "testTarget" : "target")
+  let appleExclusions = config.exclusions.resolvedAppleExclusions
 
-  // Build multi-line dependencies section — auto-discovered external deps take priority,
-  // with mappers.imports already merged in by discoverExternalDeps.
+  // Build multi-line dependencies section using three-way resolution.
   var depsStr = ""
   if !target.dependencies.isEmpty {
-    let depLines = target.dependencies
-      .map { dep in externalDeps[dep, default: "\"\(dep)\""] }
-      .sorted(by: <)
-      .map { "\(s3)\($0)" }
-    depsStr = "\n\(s2)dependencies: [\n" + depLines.joined(separator: ",\n") + "\n\(s2)],"
+    var resolvedLines: [String] = []
+    for dep in target.dependencies {
+      if let extDep = externalDeps[dep] {
+        resolvedLines.append(extDep)
+      } else if allLocalTargetNames.contains(dep) {
+        resolvedLines.append("\"\(dep)\"")
+      } else if appleExclusions.contains(dep) {
+        // Known Apple SDK or user-excluded framework — skip silently.
+      } else {
+        Diagnostics.emit(.warning, "Dropped unresolved import '\(dep)'. If it's a system framework, ignore this.")
+      }
+    }
+    if !resolvedLines.isEmpty {
+      let lines = resolvedLines.sorted().map { "\(s3)\($0)" }
+      depsStr = "\n\(s2)dependencies: [\n" + lines.joined(separator: ",\n") + "\n\(s2)],"
+    }
   }
 
   // Leaf info comment (inline after name, before dependencies)
@@ -134,6 +152,8 @@ func generateTargetsSection(
     return a.name < b.name
   }
 
+  let allLocalTargetNames = Set(parsedPackages.map { $0.name })
+
   var output = "// MARK: - Products\npackage.targets.append(contentsOf: [\n"
   var last = ""
   var lastGroup = ""
@@ -150,7 +170,7 @@ func generateTargetsSection(
         lastGroup = group
       }
     }
-    last = renderSingleTarget(target, config: config, externalDeps: externalDeps, leafWeights: leafWeights)
+    last = renderSingleTarget(target, config: config, externalDeps: externalDeps, allLocalTargetNames: allLocalTargetNames, leafWeights: leafWeights)
   }
 
   if !last.isEmpty {

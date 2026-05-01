@@ -4,8 +4,10 @@ import PackagePlugin
 // MARK: - Phase 3: Import Analysis
 
 /// Filters raw imports for a target.
-/// Drops: Apple SDKs, explicitly excluded imports, and the target's own module name.
-/// All other imports are kept and passed through to code generation.
+/// Drops: explicitly excluded imports and the target's own module name.
+/// Apple SDK filtering is deferred to the rendering phase so that external package
+/// products whose names collide with Apple SDK names (e.g. "Charts") are never
+/// silently discarded before we've had a chance to look them up in externalDeps.
 /// Returns a sorted list for deterministic output.
 func filterImports(
   rawImports: [String],
@@ -13,9 +15,7 @@ func filterImports(
   exclusions: ConfigurationV2.Exclusions,
   verbose: Bool
 ) -> [String] {
-  let appleExclusions = exclusions.resolvedAppleExclusions
   let importExclusions = Set(exclusions.imports)
-
   var filtered: [String] = []
 
   for importName in rawImports {
@@ -26,14 +26,6 @@ func filterImports(
     if importExclusions.contains(importName) {
       if verbose {
         Diagnostics.emit(.remark, "Skipped excluded import: \(importName)")
-      }
-      continue
-    }
-
-    // Skip Apple SDKs
-    if appleExclusions.contains(importName) {
-      if verbose {
-        Diagnostics.emit(.remark, "Skipped Apple SDK: \(importName)")
       }
       continue
     }
