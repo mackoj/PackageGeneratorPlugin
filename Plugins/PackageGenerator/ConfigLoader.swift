@@ -71,7 +71,12 @@ enum ConfigLoader {
     let converter = converterURL ?? workDir.appendingPathComponent("yaml-converter")
     let task = Process()
     task.executableURL = converter
-    task.arguments = [yamlURL.path, tempJSON.path]
+    task.arguments = [
+      "--input-file-url", yamlURL.path,
+      "--output-file-url", tempJSON.path,
+      "--input-format", "yaml",
+      "--output-format", "json",
+    ]
     
     try task.run()
     task.waitUntilExit()

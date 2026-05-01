@@ -3,11 +3,13 @@ import PackagePlugin
 
 // MARK: - Phase 3: Import Analysis
 
-/// Filters imports using strict set intersection.
-/// Only keeps imports that exist as local targets or external products.
-/// Auto-drops Apple SDKs unless explicitly configured.
+/// Filters raw imports for a target.
+/// Drops: apple SDKs, explicitly excluded imports, and the target's own module name.
+/// Keeps only imports found in `validTargets ∪ externalProducts` and warns on unknown ones.
+/// Returns a sorted list for deterministic output.
 func filterImports(
   rawImports: [String],
+  targetName: String,
   validTargets: Set<String>,
   externalProducts: Set<String>,
   exclusions: ConfigurationV2.Exclusions,
@@ -17,24 +19,21 @@ func filterImports(
   let appleExclusions = exclusions.resolvedAppleExclusions
   let importExclusions = Set(exclusions.imports)
   let validSet = validTargets.union(externalProducts)
-  
+
   var filtered: [String] = []
-  
+
   for importName in rawImports {
-    // Skip self-imports
-    if validTargets.contains(importName) && rawImports.filter({ $0 == importName }).count == 1 {
-      // This is a self-import, skip it
-      continue
-    }
-    
-    // Skip explicit exclusions
+    // Skip the target's own module (self-import)
+    if importName == targetName { continue }
+
+    // Skip explicit import exclusions
     if importExclusions.contains(importName) {
       if verbose {
         Diagnostics.emit(.remark, "Skipped excluded import: \(importName)")
       }
       continue
     }
-    
+
     // Skip Apple SDKs
     if appleExclusions.contains(importName) {
       if verbose {
@@ -42,69 +41,17 @@ func filterImports(
       }
       continue
     }
-    
-    // Only keep if in valid set
+
+    // Keep only known targets and external products
     if validSet.contains(importName) {
       filtered.append(importName)
     } else if !silenceWarnings {
       Diagnostics.emit(
         .warning,
-        "ℹ️ Dropped unresolved import '\(importName)'. If this is a system framework, ignore this. Otherwise, ensure it is linked in the root Package.swift."
+        "Dropped unresolved import '\(importName)'. If it's a system framework, ignore this."
       )
     }
   }
-  
-  return filtered
-}
 
-/// Applies mapper transformations to imports and target names.
-/// Rename imports per mappers.imports, rename target paths per mappers.targets.
-func applyMappers(
-  _ imports: [String],
-  _ config: ConfigurationV2,
-  verbose: Bool
-) -> [String] {
-  var mapped = imports
-  
-  // Apply import mappers
-  mapped = mapped.map { importName -> String in
-    if let renamed = config.mappers.imports[importName] {
-      if verbose {
-        Diagnostics.emit(.remark, "Mapped import '\(importName)' to '\(renamed)'")
-      }
-      return renamed
-    }
-    return importName
-  }
-  
-  return mapped
-}
-
-/// Attaches filtered dependencies to each target.
-/// For each target, returns the list of valid dependencies.
-func attachDependencies(
-  targetName: String,
-  imports: [String],
-  validTargets: Set<String>,
-  externalProducts: Set<String>,
-  verbose: Bool
-) -> [String] {
-  var dependencies: [String] = []
-  
-  for importName in imports {
-    // Check if it's a local target
-    if validTargets.contains(importName) && importName != targetName {
-      dependencies.append(importName)
-    }
-    // Check if it's an external product
-    else if externalProducts.contains(importName) {
-      dependencies.append(importName)
-    }
-  }
-  
-  if verbose && !dependencies.isEmpty {
-    Diagnostics.emit(.remark, "Target '\(targetName)' depends on: \(dependencies.joined(separator: ", "))")
-  }
-  
-  return dependencies
+  return filtered.sorted()
 }

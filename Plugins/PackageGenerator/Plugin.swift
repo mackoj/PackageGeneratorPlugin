@@ -12,17 +12,21 @@ struct PackageGeneratorPlugin: CommandPlugin {
         break
       }
     }
-    
+
+    // Resolve yaml-converter tool URL from plugin context
+    let yamlConverterURL = (try? context.tool(named: "yaml-converter"))?.url
+
     do {
       // Load config (auto-finds packageGenerator.yaml/yml/json if not explicit)
       let config = try ConfigLoader.load(
         from: context.package.directoryURL,
-        explicitPath: configPath
+        explicitPath: configPath,
+        yamlConverterURL: yamlConverterURL
       )
-      
+
       // Generate Package.swift using V2 architecture
-      try PackageGeneratorV2.generate(config: config, context: context)
-      
+      PackageGeneratorV2.generate(config: config, context: context)
+
       Diagnostics.emit(.remark, "✅ PackageGenerator V2 finished successfully")
     } catch ConfigLoader.LoadError.fileNotFound {
       Diagnostics.emit(.error, "❌ Config file not found. Searched for packageGenerator.{yaml,yml,json}")

@@ -224,6 +224,7 @@ let appleDefaultSDKs = [
   "WiFiAware",
   "WidgetKit",
   "WorkoutKit",
+  "Testing",
   "XCTest",
   "XPC",
   "_AVKit_SwiftUI",

@@ -58,33 +58,35 @@ func resolveTargetPaths(
 func linkTestTargets(
   _ config: ConfigurationV2,
   _ context: PackagePlugin.PluginContext
-) -> [String: String] {
+) -> (mapping: [String: String], fallbackCount: Int) {
   var testToRegularMapping: [String: String] = [:]
-  
+  var fallbackCount = 0
+
   for group in config.packageDirectoryTargets {
     let regularTargets = group.targets.filter { $0.type == .regular }
     let testTargets = group.targets.filter { $0.type == .test }
-    
+
     for testTarget in testTargets {
       let baseName = testTarget.regularTargetName ?? stripTestSuffix(testTarget.name)
-      
-      // Try to find matching regular target
+
       if let matchingRegular = regularTargets.first(where: { $0.name == baseName }) {
         testToRegularMapping[testTarget.name] = matchingRegular.name
       } else if let firstRegular = regularTargets.first {
-        // Fallback to first regular target
         testToRegularMapping[testTarget.name] = firstRegular.name
-        Diagnostics.emit(
-          .warning,
-          "Test target '\(testTarget.name)' has no matching regular target '\(baseName)'. Attaching to '\(firstRegular.name)'."
-        )
-      } else {
+        fallbackCount += 1
+        if config.verbose {
+          Diagnostics.emit(
+            .warning,
+            "Test target '\(testTarget.name)' has no matching regular target '\(baseName)'. Attaching to '\(firstRegular.name)'."
+          )
+        }
+      } else if config.verbose {
         Diagnostics.emit(.warning, "Test target '\(testTarget.name)' has no corresponding regular target in group.")
       }
     }
   }
-  
-  return testToRegularMapping
+
+  return (testToRegularMapping, fallbackCount)
 }
 
 /// Discovers external dependencies from SPM context.
@@ -119,28 +121,173 @@ func discoverExternalDeps(
   return merged
 }
 
-/// Extracts imports for a target by shelling to package-generator-cli.
-func extractTargetImports(
-  targetPath: String,
-  _ config: ConfigurationV2,
-  _ context: PackagePlugin.PluginContext
-) -> [String] {
-  let packageDir = context.package.directoryURL
-  let fullTargetPath = packageDir.appendingPathComponent(targetPath)
-  
-  // This would normally invoke package-generator-cli to parse .swift files
-  // For now, return empty as a placeholder (the CLI tool would handle this)
-  
-  if config.verbose {
-    Diagnostics.emit(.remark, "Extracting imports from target at \(fullTargetPath.path)")
+/// Input entry passed to package-generator-cli (mirrors PackageInformation in PackageGeneratorModels).
+private struct CLIInputEntry: Codable {
+  struct PathInfo: Codable {
+    let path: String
+    let name: String
+    let exclude: [String]?
   }
-  
-  // In the real implementation, this would:
-  // 1. Invoke package-generator-cli with the target directory
-  // 2. Parse the JSON output to extract import statements
-  // 3. Return the list of imports
-  
-  return []
+  let target: PathInfo
+  let test: PathInfo?
+}
+
+/// Invokes `package-generator-cli` once for all targets and returns a mapping of
+/// `[configTargetName: rawImports]`.  Test packages are keyed by their explicit test
+/// name (e.g., "ATTRequestTests"), not by the main target name.
+func runCLI(
+  config: ConfigurationV2,
+  context: PackagePlugin.PluginContext,
+  resolvedPaths: [String: String],
+  testMapping: [String: String]  // [testTargetName: mainTargetName]
+) -> [String: [String]] {
+  let packageDir = context.package.directoryURL
+  let workDir = context.pluginWorkDirectoryURL
+
+  // Build reverse map: mainTargetName → testTargetName (1:1 assumed per config)
+  var mainToTestName: [String: String] = [:]
+  var mainToTestSpec: [String: ConfigurationV2.TargetSpec] = [:]
+  for group in config.packageDirectoryTargets {
+    for spec in group.targets where spec.type == .test {
+      if let mainName = testMapping[spec.name] {
+        mainToTestName[mainName] = spec.name
+        mainToTestSpec[mainName] = spec
+      }
+    }
+  }
+
+  let fm = FileManager.default
+  var entries: [CLIInputEntry] = []
+  var pairedTestNames = Set<String>()
+
+  // Pair regular/macro targets with their test counterparts
+  for group in config.packageDirectoryTargets {
+    for spec in group.targets where spec.type != .test {
+      let relPath = resolvedPaths[spec.name] ?? "\(group.path)/\(spec.name)"
+      let absPath = packageDir.appendingPathComponent(relPath).path
+
+      // Skip if target directory doesn't exist on disk
+      guard fm.fileExists(atPath: absPath) else {
+        Diagnostics.emit(.warning, "Skipping '\(spec.name)': directory not found at \(relPath)")
+        continue
+      }
+
+      let targetInfo = CLIInputEntry.PathInfo(path: absPath, name: spec.name, exclude: spec.exclude)
+
+      var testInfo: CLIInputEntry.PathInfo?
+      if let testName = mainToTestName[spec.name],
+         let testRelPath = resolvedPaths[testName] {
+        let absTestPath = packageDir.appendingPathComponent(testRelPath).path
+        if fm.fileExists(atPath: absTestPath) {
+          testInfo = CLIInputEntry.PathInfo(
+            path: absTestPath,
+            name: testName,
+            exclude: mainToTestSpec[spec.name]?.exclude
+          )
+          pairedTestNames.insert(testName)
+        } else {
+          Diagnostics.emit(.warning, "Skipping test '\(testName)': directory not found at \(testRelPath)")
+        }
+      }
+      entries.append(CLIInputEntry(target: targetInfo, test: testInfo))
+    }
+  }
+
+  // Orphan test targets (no matching regular target)
+  for group in config.packageDirectoryTargets {
+    for spec in group.targets where spec.type == .test && !pairedTestNames.contains(spec.name) {
+      let relPath = resolvedPaths[spec.name] ?? "\(group.path)/\(spec.name)"
+      let absPath = packageDir.appendingPathComponent(relPath).path
+      guard fm.fileExists(atPath: absPath) else {
+        Diagnostics.emit(.warning, "Skipping orphan test '\(spec.name)': directory not found at \(relPath)")
+        continue
+      }
+      entries.append(CLIInputEntry(
+        target: CLIInputEntry.PathInfo(path: absPath, name: spec.name, exclude: spec.exclude),
+        test: nil
+      ))
+    }
+  }
+
+  // Write input JSON
+  let inputURL = workDir.appendingPathComponent("cli_input.json")
+  let outputURL = workDir.appendingPathComponent("cli_output.json")
+
+  do {
+    let data = try JSONEncoder().encode(entries)
+    try data.write(to: inputURL, options: [.atomic])
+  } catch {
+    Diagnostics.emit(.error, "Failed to write CLI input: \(error)")
+    return [:]
+  }
+
+  guard let tool = try? context.tool(named: "package-generator-cli") else {
+    Diagnostics.emit(.error, "Could not find package-generator-cli tool")
+    return [:]
+  }
+
+  // ArgumentParser converts @Option camelCase vars to kebab-case flags
+  var args = [
+    "--output-file-url", outputURL.path,
+    "--input-file-url", inputURL.path,
+    "--package-directory", packageDir.path,
+  ]
+  if config.verbose { args.append("--verbose") }
+
+  let process = Process()
+  process.executableURL = tool.url
+  process.arguments = args
+
+  // In non-verbose mode suppress CLI stdout/stderr; on failure the error status is still caught below
+  let suppressPipe = Pipe()
+  if !config.verbose {
+    process.standardOutput = suppressPipe
+    process.standardError = suppressPipe
+  }
+
+  do {
+    try process.run()
+  } catch {
+    Diagnostics.emit(.error, "Failed to launch package-generator-cli: \(error)")
+    return [:]
+  }
+  process.waitUntilExit()
+
+  guard process.terminationStatus == 0 else {
+    Diagnostics.emit(.error, "package-generator-cli exited with status \(process.terminationStatus)")
+    return [:]
+  }
+
+  guard FileManager.default.fileExists(atPath: outputURL.path) else {
+    Diagnostics.emit(.warning, "package-generator-cli produced no output")
+    return [:]
+  }
+
+  do {
+    let data = try Data(contentsOf: outputURL)
+    let parsedPackages = try JSONDecoder().decode([ParsedPackage].self, from: data)
+
+    var result: [String: [String]] = [:]
+    for pkg in parsedPackages {
+      if pkg.isTest {
+        // CLI stores test packages under mainTargetName; remap to explicit test target name
+        let testName = mainToTestName[pkg.name] ?? (pkg.name + "Tests")
+        result[testName] = pkg.dependencies
+      } else {
+        result[pkg.name] = pkg.dependencies
+      }
+    }
+
+    if !config.keepTempFiles {
+      try? FileManager.default.removeItem(at: inputURL)
+      try? FileManager.default.removeItem(at: outputURL)
+    }
+
+    return result
+  } catch {
+    Diagnostics.emit(.error, "Failed to decode CLI output: \(error)")
+    return [:]
+  }
 }
 
 // MARK: - Helpers
