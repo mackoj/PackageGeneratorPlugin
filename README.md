@@ -334,7 +334,7 @@ A: Check `packageDirectoryTargets[].path`. Plugin uses shortest-path logic in So
 A: V2 supports old `targetsParameters` dict—no changes needed. Migrate to inline `parameters` when ready.
 
 **Q: How do I exclude Apple frameworks?**  
-A: They're auto-excluded (full list in source). Use `exclusions.apple` only for custom frameworks.
+A: They're auto-excluded via the built-in list in `AppleSDKs.swift`. The `exclusions.apple` config key is no longer needed and is silently ignored if present in old configs.
 
 **Q: Can I use both YAML and JSON?**  
 A: Yes. Plugin auto-detects by filename. Change file extension to switch formats.

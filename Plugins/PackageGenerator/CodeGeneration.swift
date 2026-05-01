@@ -43,7 +43,7 @@ func pragmaMarkGroupName(_ path: String, fallback: String) -> String {
 /// Resolution priority per import:
 ///   1. In `externalDeps`          → `.product(name:package:)` reference
 ///   2. In `allLocalTargetNames`   → `"TargetName"` string literal
-///   3. In Apple SDK / exclusions  → silently skipped
+///   3. In Apple SDK built-in list  → silently skipped
 ///   4. Otherwise                  → warning emitted, dep skipped
 func renderSingleTarget(
   _ target: ParsedPackage,
@@ -57,7 +57,7 @@ func renderSingleTarget(
   let s3 = String(repeating: " ", count: config.spaces * 3)
 
   let blockType = target.isMacro ? "macro" : (target.isTest ? "testTarget" : "target")
-  let appleExclusions = config.exclusions.resolvedAppleExclusions
+  let appleExclusions = Set(appleDefaultSDKs)
 
   // Build multi-line dependencies section using three-way resolution.
   var depsStr = ""

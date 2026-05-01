@@ -82,18 +82,30 @@ struct ConfigurationV2: Codable {
   }
   
   struct Exclusions: Codable {
-    let apple: [String]
     let imports: [String]
     let targets: [String]
     
-    var resolvedAppleExclusions: Set<String> {
-      Set(appleDefaultSDKs + apple)
-    }
-    
-    init(apple: [String] = [], imports: [String] = [], targets: [String] = []) {
-      self.apple = apple
+    init(imports: [String] = [], targets: [String] = []) {
       self.imports = imports
       self.targets = targets
+    }
+
+    // Custom decoder: silently ignores legacy `apple` key so old configs don't break.
+    init(from decoder: Decoder) throws {
+      let c = try decoder.container(keyedBy: CodingKeys.self)
+      imports = try c.decodeIfPresent([String].self, forKey: .imports) ?? []
+      targets = try c.decodeIfPresent([String].self, forKey: .targets) ?? []
+      // `apple` key is intentionally ignored — Apple SDKs are now built into AppleSDKs.swift.
+    }
+
+    func encode(to encoder: Encoder) throws {
+      var c = encoder.container(keyedBy: CodingKeys.self)
+      try c.encode(imports, forKey: .imports)
+      try c.encode(targets, forKey: .targets)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+      case imports, targets, apple
     }
   }
   
