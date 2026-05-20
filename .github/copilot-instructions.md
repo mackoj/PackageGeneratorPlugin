@@ -70,11 +70,20 @@ let packageIdentity = dependency.package.displayName
 `filterImports` (Phase 3) does **not** filter Apple SDKs. This is intentional: filtering happens in `renderSingleTarget` (Phase 4), after checking `externalDeps` first. This prevents silently dropping external products whose names collide with Apple SDK names (e.g., `Charts`).
 
 ### Parameter Injection is Verbatim
-`parameters` strings from config are written directly into `Package.swift` without parsing or validation:
+`parameters` strings and `additionalDependencies` strings from config are written directly into `Package.swift` without parsing or validation.
+
+`parameters` are appended after `path:` as extra target arguments:
 ```swift
 for param in target.parameters ?? [] {
     extraParams += ",\n\(s2)\(param.trimmingCharacters(in: .whitespacesAndNewlines))"
 }
+```
+
+`additionalDependencies` are appended to the `dependencies:` array after the auto-resolved imports (which are sorted). Use when a target needs a dep that isn't imported in source (macros, plugins, transitive deps):
+```yaml
+additionalDependencies:
+  - '"SomeLocalTarget"'
+  - '.product(name: "PreviewSnapshots", package: "swiftui-preview-snapshots")'
 ```
 
 ### Dependency Resolution Priority (in `renderSingleTarget`)
@@ -82,6 +91,7 @@ for param in target.parameters ?? [] {
 2. `allLocalTargetNames` set → `"TargetName"` string literal
 3. Apple SDK built-in list (`AppleSDKs.swift`) → silently skipped
 4. Otherwise → warning emitted, dep skipped
+5. `additionalDependencies` → appended verbatim **after** the sorted resolved deps, bypassing all resolution
 
 ### Swift 6 Strict Concurrency
 The package uses `swiftLanguageModes: [.v6]`. All new code must comply with Swift 6 strict concurrency rules.
