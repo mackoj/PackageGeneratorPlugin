@@ -84,6 +84,9 @@ struct ConfigurationV2: Codable {
     let exclude: [String]?
     let parameters: [String]?
     let regularTargetName: String?
+    /// Verbatim dependency strings injected into the target's `dependencies:` array as-is.
+    /// Accepts plain target names (`"Core"`) or full product references (`.product(name: "Foo", package: "bar")`).
+    let additionalDependencies: [String]?
 
     enum TargetType: String, Codable {
       case regular
@@ -98,13 +101,14 @@ struct ConfigurationV2: Codable {
       }
     }
 
-    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil) {
+    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil, additionalDependencies: [String]? = nil) {
       self.name = name
       self.type = type
       self.path = path
       self.exclude = exclude
       self.parameters = parameters
       self.regularTargetName = regularTargetName
+      self.additionalDependencies = additionalDependencies
     }
 
     init(from decoder: Decoder) throws {
@@ -115,6 +119,7 @@ struct ConfigurationV2: Codable {
       exclude = try c.decodeIfPresent([String].self, forKey: .exclude)
       parameters = try c.decodeIfPresent([String].self, forKey: .parameters)
       regularTargetName = try c.decodeIfPresent(String.self, forKey: .regularTargetName)
+      additionalDependencies = try c.decodeIfPresent([String].self, forKey: .additionalDependencies)
     }
   }
   
