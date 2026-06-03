@@ -63,7 +63,8 @@ struct PackageGeneratorV2 {
           path: resolvedPath,
           fullPath: context.package.directoryURL.appendingPathComponent(resolvedPath).path,
           exclude: targetSpec.exclude ?? [],
-          parameters: targetSpec.parameters
+          parameters: targetSpec.parameters,
+          additionalDependencies: targetSpec.additionalDependencies
         )
 
         parsedPackages.append(parsed)

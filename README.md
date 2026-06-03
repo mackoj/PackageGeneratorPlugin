@@ -85,7 +85,12 @@ packageDirectoryTargets:
           - 'swiftSettings: [...]'
           - 'resources: [.process("Files")]'
         regularTargetName: null                # for tests: explicit link to regular target
+        additionalDependencies:                # verbatim entries added to dependencies: []
+          - '"AnotherTarget"'
+          - '.product(name: "Foo", package: "foo-package")'
 ```
+
+`additionalDependencies` injects strings verbatim into the target's `dependencies:` array, bypassing import analysis. Use it when a target needs a dependency that isn't imported in source (common with macros, plugins, or transitive requirements). Auto-resolved imports are emitted first (sorted), then `additionalDependencies` in declaration order.
 
 **Path Resolution** (shortest-path logic):
 - Regular target: `<path>/Sources/<name>` or custom `path`

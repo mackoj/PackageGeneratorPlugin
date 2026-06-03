@@ -61,7 +61,8 @@ func renderSingleTarget(
 
   // Build multi-line dependencies section using three-way resolution.
   var depsStr = ""
-  if !target.dependencies.isEmpty {
+  let extraDeps = target.additionalDependencies ?? []
+  if !target.dependencies.isEmpty || !extraDeps.isEmpty {
     var resolvedLines: [String] = []
     for dep in target.dependencies {
       if let extDep = externalDeps[dep] {
@@ -74,9 +75,10 @@ func renderSingleTarget(
         Diagnostics.emit(.warning, "Dropped unresolved import '\(dep)'. If it's a system framework, ignore this.")
       }
     }
-    if !resolvedLines.isEmpty {
-      let lines = resolvedLines.sorted().map { "\(s3)\($0)" }
-      depsStr = "\n\(s2)dependencies: [\n" + lines.joined(separator: ",\n") + "\n\(s2)],"
+    let allLines = resolvedLines.sorted().map { "\(s3)\($0)" }
+      + extraDeps.map { "\(s3)\($0)" }
+    if !allLines.isEmpty {
+      depsStr = "\n\(s2)dependencies: [\n" + allLines.joined(separator: ",\n") + "\n\(s2)],"
     }
   }
 
