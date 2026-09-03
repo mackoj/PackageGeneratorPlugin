@@ -15,6 +15,8 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
   public var parameters: [String]?
   /// Verbatim dependency strings injected into the `dependencies:` array as-is, bypassing import resolution.
   public var additionalDependencies: [String]?
+  /// Linkage of the generated `.library` product; `nil` falls back to the global `libraryType`.
+  public var libraryType: LibraryType?
 
   enum CodingKeys: String, CodingKey {
     case name
@@ -43,6 +45,7 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     self.hasBiggestNumberOfDependencies = try container.decodeIfPresent(Bool.self, forKey: .hasBiggestNumberOfDependencies) ?? false
     self.parameters = nil  // Set by plugin from config; not from CLI JSON
     self.additionalDependencies = nil  // Set by plugin from config; not from CLI JSON
+    self.libraryType = nil  // Set by plugin from config; not from CLI JSON
   }
 
   public var hasResources: Bool {
@@ -53,7 +56,7 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     return "[\(dependencies.count)|\(localDependencies)] \(name) \(hasResources == false ? "" : "/ hasResources")"
   }
   
-  public init(name: String, isTest: Bool, isMacro: Bool = false, dependencies: [String], path: String, fullPath: String, resources: String? = nil, localDependencies: Int = 0, hasBiggestNumberOfDependencies: Bool = false, exclude: [String] = [], parameters: [String]? = nil, additionalDependencies: [String]? = nil) {
+  public init(name: String, isTest: Bool, isMacro: Bool = false, dependencies: [String], path: String, fullPath: String, resources: String? = nil, localDependencies: Int = 0, hasBiggestNumberOfDependencies: Bool = false, exclude: [String] = [], parameters: [String]? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil) {
     self.name = name
     self.isTest = isTest
     self.isMacro = isMacro
@@ -66,5 +69,6 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     self.exclude = exclude
     self.parameters = parameters
     self.additionalDependencies = additionalDependencies
+    self.libraryType = libraryType
   }
 }

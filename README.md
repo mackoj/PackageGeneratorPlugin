@@ -66,6 +66,7 @@ Auto-generate complex multi-target SPM `Package.swift`. Read source imports, res
 | `keepTempFiles` | Bool | `false` | Preserve YAML→JSON temp files (debug) |
 | `leafInfo` | Bool | `false` | Add dependency count comments to targets |
 | `unusedThreshold` | Int | null | Warn if local target used ≤ this (0 = warn if unused) |
+| `libraryType` | String | `"automatic"` | Linkage for every generated `.library` product: `"automatic"`, `"dynamic"`, `"static"` |
 
 `verbose` accepts a legacy `true`/`false` bool for backward compatibility (`true` = `"all"`, `false` = `"none"`).
 
@@ -88,9 +89,12 @@ packageDirectoryTargets:
         additionalDependencies:                # verbatim entries added to dependencies: []
           - '"AnotherTarget"'
           - '.product(name: "Foo", package: "foo-package")'
+        libraryType: dynamic                   # overrides top-level libraryType for this product
 ```
 
 `additionalDependencies` injects strings verbatim into the target's `dependencies:` array, bypassing import analysis. Use it when a target needs a dependency that isn't imported in source (common with macros, plugins, or transitive requirements). Auto-resolved imports are emitted first (sorted), then `additionalDependencies` in declaration order.
+
+`libraryType` sets the product linkage: `automatic` (default) omits `type:` and lets SwiftPM decide, `dynamic` and `static` emit `.library(name:, type: .dynamic/.static, targets:)`. Set it per target to override the top-level `libraryType`. Ignored for `test` and `macro` targets, which produce no product.
 
 **Path Resolution** (shortest-path logic):
 - Regular target: `<path>/Sources/<name>` or custom `path`

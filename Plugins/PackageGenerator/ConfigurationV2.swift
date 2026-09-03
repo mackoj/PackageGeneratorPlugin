@@ -39,6 +39,20 @@ extension VerboseMode: Codable {
   }
 }
 
+// MARK: - LibraryType
+
+/// Linkage for generated `.library` products. `automatic` lets SwiftPM decide (default).
+public enum LibraryType: String, Codable {
+  case automatic
+  case dynamic
+  case `static`
+
+  /// Rendered `type:` argument, or `nil` when SwiftPM should decide.
+  public var productArgument: String? {
+    self == .automatic ? nil : "type: .\(rawValue)"
+  }
+}
+
 /// V2 Configuration Schema - fully normalized internal representation.
 /// Supports both old (targetsParameters dict) and new (inline parameters) formats.
 struct ConfigurationV2: Codable {
@@ -53,6 +67,8 @@ struct ConfigurationV2: Codable {
   let keepTempFiles: Bool
   let leafInfo: Bool
   let unusedThreshold: Int?
+  /// Default linkage for every generated `.library` product; per-target `libraryType` wins.
+  let libraryType: LibraryType
   // Directories and targets
   let packageDirectoryTargets: [DirectoryGroup]
   
@@ -87,6 +103,8 @@ struct ConfigurationV2: Codable {
     /// Verbatim dependency strings injected into the target's `dependencies:` array as-is.
     /// Accepts plain target names (`"Core"`) or full product references (`.product(name: "Foo", package: "bar")`).
     let additionalDependencies: [String]?
+    /// Overrides the global `libraryType` for this target's generated product.
+    let libraryType: LibraryType?
 
     enum TargetType: String, Codable {
       case regular
@@ -101,7 +119,7 @@ struct ConfigurationV2: Codable {
       }
     }
 
-    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil, additionalDependencies: [String]? = nil) {
+    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil) {
       self.name = name
       self.type = type
       self.path = path
@@ -109,6 +127,7 @@ struct ConfigurationV2: Codable {
       self.parameters = parameters
       self.regularTargetName = regularTargetName
       self.additionalDependencies = additionalDependencies
+      self.libraryType = libraryType
     }
 
     init(from decoder: Decoder) throws {
@@ -120,6 +139,7 @@ struct ConfigurationV2: Codable {
       parameters = try c.decodeIfPresent([String].self, forKey: .parameters)
       regularTargetName = try c.decodeIfPresent(String.self, forKey: .regularTargetName)
       additionalDependencies = try c.decodeIfPresent([String].self, forKey: .additionalDependencies)
+      libraryType = try c.decodeIfPresent(LibraryType.self, forKey: .libraryType)
     }
   }
   
@@ -172,6 +192,7 @@ struct ConfigurationV2: Codable {
     keepTempFiles: Bool = false,
     leafInfo: Bool = false,
     unusedThreshold: Int? = nil,
+    libraryType: LibraryType = .automatic,
     packageDirectoryTargets: [DirectoryGroup] = [],
     mappers: Mappers = Mappers(),
     exclusions: Exclusions = Exclusions()
@@ -186,6 +207,7 @@ struct ConfigurationV2: Codable {
     self.keepTempFiles = keepTempFiles
     self.leafInfo = leafInfo
     self.unusedThreshold = unusedThreshold
+    self.libraryType = libraryType
     self.packageDirectoryTargets = packageDirectoryTargets
     self.mappers = mappers
     self.exclusions = exclusions
@@ -204,6 +226,7 @@ struct ConfigurationV2: Codable {
     case keepTempFiles
     case leafInfo
     case unusedThreshold
+    case libraryType
     case packageDirectoryTargets
     case mappers
     case exclusions
@@ -223,6 +246,7 @@ struct ConfigurationV2: Codable {
     self.keepTempFiles = try container.decodeIfPresent(Bool.self, forKey: .keepTempFiles) ?? false
     self.leafInfo = try container.decodeIfPresent(Bool.self, forKey: .leafInfo) ?? false
     self.unusedThreshold = try container.decodeIfPresent(Int.self, forKey: .unusedThreshold)
+    self.libraryType = try container.decodeIfPresent(LibraryType.self, forKey: .libraryType) ?? .automatic
     self.mappers = try container.decodeIfPresent(Mappers.self, forKey: .mappers) ?? Mappers()
     self.exclusions = try container.decodeIfPresent(Exclusions.self, forKey: .exclusions) ?? Exclusions()
     
@@ -242,7 +266,9 @@ struct ConfigurationV2: Codable {
               path: target.path,
               exclude: target.exclude,
               parameters: merged.isEmpty ? nil : merged,
-              regularTargetName: target.regularTargetName
+              regularTargetName: target.regularTargetName,
+              additionalDependencies: target.additionalDependencies,
+              libraryType: target.libraryType
             )
           }
           return target
@@ -266,6 +292,7 @@ struct ConfigurationV2: Codable {
     try container.encode(keepTempFiles, forKey: .keepTempFiles)
     try container.encode(leafInfo, forKey: .leafInfo)
     try container.encodeIfPresent(unusedThreshold, forKey: .unusedThreshold)
+    try container.encode(libraryType, forKey: .libraryType)
     try container.encode(packageDirectoryTargets, forKey: .packageDirectoryTargets)
     try container.encode(mappers, forKey: .mappers)
     try container.encode(exclusions, forKey: .exclusions)

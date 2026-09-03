@@ -124,7 +124,8 @@ func generateProductsSection(
   var lines: [String] = []
   for lib in libs {
     let name = config.mappers.targets[lib.path, default: lib.name]
-    lines.append("\(s1).library(name: \"\(name)\", targets: [\"\(name)\"])")
+    let type = (lib.libraryType ?? config.libraryType).productArgument.map { "\($0), " } ?? ""
+    lines.append("\(s1).library(name: \"\(name)\", \(type)targets: [\"\(name)\"])")
   }
 
   if lines.isEmpty {
