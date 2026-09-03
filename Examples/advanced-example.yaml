@@ -10,6 +10,7 @@ spaces: 4
 leafInfo: true
 keepTempFiles: false
 unusedThreshold: 1
+libraryType: dynamic
 silenceUnresolvedImportWarnings: false
 
 packageDirectoryTargets:
@@ -24,6 +25,7 @@ packageDirectoryTargets:
       - name: Database
         type: regular
         exclude: ["__Snapshots__"]
+        libraryType: static
       - name: CoreTests
         type: test
   
