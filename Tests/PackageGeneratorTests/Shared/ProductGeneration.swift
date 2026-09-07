@@ -1,0 +1,1 @@
+../../../Plugins/PackageGenerator/ProductGeneration.swift

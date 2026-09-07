@@ -65,7 +65,8 @@ struct PackageGeneratorV2 {
           exclude: targetSpec.exclude ?? [],
           parameters: targetSpec.parameters,
           additionalDependencies: targetSpec.additionalDependencies,
-          libraryType: targetSpec.libraryType
+          libraryType: targetSpec.libraryType,
+          productName: targetSpec.productName
         )
 
         parsedPackages.append(parsed)

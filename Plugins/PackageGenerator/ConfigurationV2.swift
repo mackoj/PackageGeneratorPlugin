@@ -105,6 +105,11 @@ struct ConfigurationV2: Codable {
     let additionalDependencies: [String]?
     /// Overrides the global `libraryType` for this target's generated product.
     let libraryType: LibraryType?
+    /// Names the generated `.library` product differently from the target it wraps.
+    /// Required when the product is `dynamic` and other targets in the package link
+    /// this target: Xcode refuses to build a target dynamically while a product of
+    /// the same name exists.
+    let productName: String?
 
     enum TargetType: String, Codable {
       case regular
@@ -119,7 +124,7 @@ struct ConfigurationV2: Codable {
       }
     }
 
-    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil) {
+    init(name: String, type: TargetType = .regular, path: String? = nil, exclude: [String]? = nil, parameters: [String]? = nil, regularTargetName: String? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil, productName: String? = nil) {
       self.name = name
       self.type = type
       self.path = path
@@ -128,6 +133,7 @@ struct ConfigurationV2: Codable {
       self.regularTargetName = regularTargetName
       self.additionalDependencies = additionalDependencies
       self.libraryType = libraryType
+      self.productName = productName
     }
 
     init(from decoder: Decoder) throws {
@@ -140,6 +146,7 @@ struct ConfigurationV2: Codable {
       regularTargetName = try c.decodeIfPresent(String.self, forKey: .regularTargetName)
       additionalDependencies = try c.decodeIfPresent([String].self, forKey: .additionalDependencies)
       libraryType = try c.decodeIfPresent(LibraryType.self, forKey: .libraryType)
+      productName = try c.decodeIfPresent(String.self, forKey: .productName)
     }
   }
   
@@ -268,7 +275,8 @@ struct ConfigurationV2: Codable {
               parameters: merged.isEmpty ? nil : merged,
               regularTargetName: target.regularTargetName,
               additionalDependencies: target.additionalDependencies,
-              libraryType: target.libraryType
+              libraryType: target.libraryType,
+              productName: target.productName
             )
           }
           return target

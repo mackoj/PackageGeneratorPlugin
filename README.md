@@ -90,11 +90,29 @@ packageDirectoryTargets:
           - '"AnotherTarget"'
           - '.product(name: "Foo", package: "foo-package")'
         libraryType: dynamic                   # overrides top-level libraryType for this product
+        productName: FooDynamic                # names the product differently from the target
 ```
 
 `additionalDependencies` injects strings verbatim into the target's `dependencies:` array, bypassing import analysis. Use it when a target needs a dependency that isn't imported in source (common with macros, plugins, or transitive requirements). Auto-resolved imports are emitted first (sorted), then `additionalDependencies` in declaration order.
 
 `libraryType` sets the product linkage: `automatic` (default) omits `type:` and lets SwiftPM decide, `dynamic` and `static` emit `.library(name:, type: .dynamic/.static, targets:)`. Set it per target to override the top-level `libraryType`. Ignored for `test` and `macro` targets, which produce no product.
+
+`productName` names the generated product differently from the target it wraps, emitting `.library(name: "<productName>", targets: ["<target>"])`. It takes precedence over a `mappers.targets` entry for the same target.
+
+**A `dynamic` product usually needs one.** Xcode refuses to build a target dynamically while a product of the same name exists, as soon as another target in the same package links that target:
+
+```
+error: Swift package target 'FooCore' is linked as a static library by 'BarTests' and 4 other
+targets, but cannot be built dynamically because there is a package product with the same name.
+```
+
+Giving the product its own name resolves it:
+
+```yaml
+      - name: FooCore
+        libraryType: dynamic
+        productName: Foo      # .library(name: "Foo", type: .dynamic, targets: ["FooCore"])
+```
 
 **Path Resolution** (shortest-path logic):
 - Regular target: `<path>/Sources/<name>` or custom `path`
@@ -119,7 +137,7 @@ mappers:
 ```
 
 - `imports`: manually map an import name to an SPM `.product()` string; merged with auto-discovered products (manual overrides win)
-- `targets`: maps target path to alternative name
+- `targets`: maps a target path to the name of its generated product; the product still points at the real target. Prefer the per-target `productName` key, which is local to the target it renames
 - Auto-discovery reads all direct dependencies in your root `Package.swift` and maps each product to its URL-derived package identity (last path component of the URL); `mappers.imports` is only needed for edge cases where the import name differs from the product name
 
 ### exclusions
