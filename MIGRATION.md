@@ -85,6 +85,7 @@ keepTempFiles: false        # Debug YAML→JSON conversion
 leafInfo: false             # Add dependency weight comments
 unusedThreshold: null       # Warn if target used ≤ this
 libraryType: automatic      # "automatic" | "dynamic" | "static" product linkage
+                            # per-target: productName renames the generated product
 
 # verbose is now a string scope (bool still accepted for compatibility)
 verbose: "none"             # "none" | "plugin" | "cli" | "all"

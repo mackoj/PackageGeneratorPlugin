@@ -1,0 +1,1 @@
+../../../Plugins/PackageGenerator/ConfigurationV2.swift

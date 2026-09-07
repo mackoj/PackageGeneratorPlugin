@@ -52,6 +52,12 @@ let package = Package(
       ],
       path: "Plugins/PackageGenerator"
     ),
+    // A `.plugin` target cannot be imported, so this target compiles the
+    // PackagePlugin-free generator sources directly (symlinked under `Shared/`).
+    .testTarget(
+      name: "PackageGeneratorTests",
+      path: "Tests/PackageGeneratorTests"
+    ),
   ],
   swiftLanguageModes: [.v6]
 )

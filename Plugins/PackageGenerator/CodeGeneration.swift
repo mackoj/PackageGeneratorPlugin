@@ -109,34 +109,6 @@ func renderSingleTarget(
   return "\(s1).\(blockType)(\n\(s2)name: \"\(target.name)\",\(leafComment)\(depsStr)\n\(s2)path: \"\(target.path)\"\(extraParams)\n\(s1))"
 }
 
-/// Generates the products `package.products.append(contentsOf: [...])` section.
-/// Includes all non-test, non-macro targets sorted alphabetically.
-func generateProductsSection(
-  parsedPackages: [ParsedPackage],
-  config: ConfigurationV2
-) -> String {
-  let s1 = String(repeating: " ", count: config.spaces)
-
-  let libs = parsedPackages
-    .filter { !$0.isTest && !$0.isMacro }
-    .sorted { $0.name < $1.name }
-
-  var lines: [String] = []
-  for lib in libs {
-    let name = config.mappers.targets[lib.path, default: lib.name]
-    let type = (lib.libraryType ?? config.libraryType).productArgument.map { "\($0), " } ?? ""
-    lines.append("\(s1).library(name: \"\(name)\", \(type)targets: [\"\(name)\"])")
-  }
-
-  if lines.isEmpty {
-    return "// MARK: - Targets\npackage.products.append(contentsOf: [\n])\n"
-  }
-
-  let body = lines.dropLast().map { $0 + "," }.joined(separator: "\n")
-    + "\n" + lines.last!
-  return "// MARK: - Targets\npackage.products.append(contentsOf: [\n\(body)\n])\n\n"
-}
-
 /// Generates the targets `package.targets.append(contentsOf: [...])` section
 /// with optional pragma-mark grouping.
 func generateTargetsSection(

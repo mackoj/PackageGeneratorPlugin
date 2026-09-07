@@ -17,6 +17,9 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
   public var additionalDependencies: [String]?
   /// Linkage of the generated `.library` product; `nil` falls back to the global `libraryType`.
   public var libraryType: LibraryType?
+  /// Name of the generated `.library` product when it must differ from the target name;
+  /// `nil` falls back to `mappers.targets[path]`, then to the target name.
+  public var productName: String?
 
   enum CodingKeys: String, CodingKey {
     case name
@@ -46,6 +49,7 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     self.parameters = nil  // Set by plugin from config; not from CLI JSON
     self.additionalDependencies = nil  // Set by plugin from config; not from CLI JSON
     self.libraryType = nil  // Set by plugin from config; not from CLI JSON
+    self.productName = nil  // Set by plugin from config; not from CLI JSON
   }
 
   public var hasResources: Bool {
@@ -56,7 +60,7 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     return "[\(dependencies.count)|\(localDependencies)] \(name) \(hasResources == false ? "" : "/ hasResources")"
   }
   
-  public init(name: String, isTest: Bool, isMacro: Bool = false, dependencies: [String], path: String, fullPath: String, resources: String? = nil, localDependencies: Int = 0, hasBiggestNumberOfDependencies: Bool = false, exclude: [String] = [], parameters: [String]? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil) {
+  public init(name: String, isTest: Bool, isMacro: Bool = false, dependencies: [String], path: String, fullPath: String, resources: String? = nil, localDependencies: Int = 0, hasBiggestNumberOfDependencies: Bool = false, exclude: [String] = [], parameters: [String]? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil, productName: String? = nil) {
     self.name = name
     self.isTest = isTest
     self.isMacro = isMacro
@@ -70,5 +74,6 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     self.parameters = parameters
     self.additionalDependencies = additionalDependencies
     self.libraryType = libraryType
+    self.productName = productName
   }
 }
