@@ -60,6 +60,7 @@ struct ConfigurationV2: Codable {
   let verbose: VerboseMode
   let dryRun: Bool
   let pragmaMark: Bool
+  let includePackageCountMark: Bool
   let generateExportedFiles: Bool
   let exportedFilesRelativePath: String?
   let headerFileURL: String?
@@ -192,6 +193,7 @@ struct ConfigurationV2: Codable {
     verbose: VerboseMode = .none,
     dryRun: Bool = false,
     pragmaMark: Bool = false,
+    includePackageCountMark: Bool = true,
     generateExportedFiles: Bool = false,
     exportedFilesRelativePath: String? = nil,
     headerFileURL: String? = nil,
@@ -207,6 +209,7 @@ struct ConfigurationV2: Codable {
     self.verbose = verbose
     self.dryRun = dryRun
     self.pragmaMark = pragmaMark
+    self.includePackageCountMark = includePackageCountMark
     self.generateExportedFiles = generateExportedFiles
     self.exportedFilesRelativePath = exportedFilesRelativePath
     self.headerFileURL = headerFileURL
@@ -226,6 +229,7 @@ struct ConfigurationV2: Codable {
     case verbose
     case dryRun
     case pragmaMark
+    case includePackageCountMark
     case generateExportedFiles
     case exportedFilesRelativePath
     case headerFileURL
@@ -246,6 +250,7 @@ struct ConfigurationV2: Codable {
     self.verbose = try container.decodeIfPresent(VerboseMode.self, forKey: .verbose) ?? .none
     self.dryRun = try container.decodeIfPresent(Bool.self, forKey: .dryRun) ?? false
     self.pragmaMark = try container.decodeIfPresent(Bool.self, forKey: .pragmaMark) ?? false
+    self.includePackageCountMark = try container.decodeIfPresent(Bool.self, forKey: .includePackageCountMark) ?? true
     self.generateExportedFiles = try container.decodeIfPresent(Bool.self, forKey: .generateExportedFiles) ?? false
     self.exportedFilesRelativePath = try container.decodeIfPresent(String.self, forKey: .exportedFilesRelativePath)
     self.headerFileURL = try container.decodeIfPresent(String.self, forKey: .headerFileURL)
@@ -293,6 +298,7 @@ struct ConfigurationV2: Codable {
     try container.encode(verbose, forKey: .verbose)
     try container.encode(dryRun, forKey: .dryRun)
     try container.encode(pragmaMark, forKey: .pragmaMark)
+    try container.encode(includePackageCountMark, forKey: .includePackageCountMark)
     try container.encode(generateExportedFiles, forKey: .generateExportedFiles)
     try container.encodeIfPresent(exportedFilesRelativePath, forKey: .exportedFilesRelativePath)
     try container.encodeIfPresent(headerFileURL, forKey: .headerFileURL)

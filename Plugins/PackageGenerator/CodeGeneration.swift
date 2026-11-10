@@ -174,7 +174,7 @@ func writeOutput(
   let targetsSection = generateTargetsSection(parsedPackages: parsedPackages, config: config, externalDeps: externalDeps, leafWeights: leafWeights)
 
   let finalContent = headerContent
-    + "// MARK: - Generated \(nonTestCount) packages\n\n"
+    + (config.includePackageCountMark ? "// MARK: - Generated \(nonTestCount) packages\n\n" : "")
     + productsSection
     + targetsSection
 
