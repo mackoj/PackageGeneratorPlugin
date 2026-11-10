@@ -238,3 +238,16 @@ struct TargetSpecDecodingTests {
     #expect(spec.parameters == ["resources: [.process(\"Assets\")]"])
   }
 }
+
+@Suite("Generated package count mark setting")
+struct GeneratedPackageCountMarkSettingTests {
+
+  @Test("The setting decodes with a backward-compatible default")
+  func decodesSetting() throws {
+    let disabled = try JSONDecoder().decode(ConfigurationV2.self, from: Data(#"{"includePackageCountMark": false}"#.utf8))
+    #expect(disabled.includePackageCountMark == false)
+
+    let legacy = try JSONDecoder().decode(ConfigurationV2.self, from: Data(#"{}"#.utf8))
+    #expect(legacy.includePackageCountMark == true)
+  }
+}

@@ -20,6 +20,7 @@ Auto-generate complex multi-target SPM `Package.swift`. Read source imports, res
    **packageGenerator.yaml:**
    ```yaml
    pragmaMark: true
+   includePackageCountMark: false
    spaces: 4
    headerFileURL: PackageHeader.swift
    
@@ -59,6 +60,7 @@ Auto-generate complex multi-target SPM `Package.swift`. Read source imports, res
 | `verbose` | String | `"none"` | Verbose diagnostics scope: `"none"`, `"plugin"`, `"cli"`, `"all"` |
 | `dryRun` | Bool | `false` | Generate `Package_generated.swift` instead of `Package.swift` |
 | `pragmaMark` | Bool | `false` | Add `// MARK:` comments grouping targets by path |
+| `includePackageCountMark` | Bool | `true` | Include the generated package count `// MARK:` comment |
 | `generateExportedFiles` | Bool | `false` | Generate `exported.swift` with `@_exported import` for each target |
 | `exportedFilesRelativePath` | String | null | Subdirectory for exported files (e.g., `"Generated"`) |
 | `headerFileURL` | String | null | Path to file prepended to `Package.swift` |
