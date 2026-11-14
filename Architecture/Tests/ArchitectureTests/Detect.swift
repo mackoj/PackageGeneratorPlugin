@@ -3,21 +3,6 @@ import SwiftSyntax
 
 /// The detectors, separate from the codebase so `DetectorTests` can run them on snippets.
 enum Detect {
-    /// Shared test sources that are regular files, or links that do not point into `Plugins/PackageGenerator`.
-    static func unlinkedTestSources(_ sources: [SharedSource]) -> [Violation] {
-        sources.filter { source in
-            guard let destination = source.destination else { return true }
-            return !destination.hasPrefix("Plugins/PackageGenerator/")
-        }
-        .map { source in
-            Violation(
-                location: Location(
-                    filePath: source.relativePath, relativePath: source.relativePath, line: 1, column: 1),
-                snippet: source.destination.map { "\(source.relativePath) -> \($0)" }
-                    ?? "\(source.relativePath) is a regular file")
-        }
-    }
-
     /// Imports other than Foundation in `files`, the plugin files that the tests link.
     static func coreImports(in plugin: Scope, files: [String]) -> [Match<ImportDeclSyntax>] {
         guard !files.isEmpty else { return [] }
@@ -50,18 +35,6 @@ enum Detect {
             sequence(first: match.node, next: \.parent).contains {
                 $0.as(FunctionDeclSyntax.self)?.name.text == "filterImports"
             }
-        }
-    }
-
-    /// `import XCTest`.
-    static func xcTestImports(in scope: Scope) -> [Match<ImportDeclSyntax>] {
-        scope.imports(of: "XCTest")
-    }
-
-    /// The `.disabled(…)` trait, wherever a test or suite takes it.
-    static func disabledTests(in scope: Scope) -> [Match<FunctionCallExprSyntax>] {
-        scope.calls(named: "disabled").filter { call in
-            call.node.receiver == nil && call.node.calledExpression.is(MemberAccessExprSyntax.self)
         }
     }
 

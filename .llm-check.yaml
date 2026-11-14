@@ -2,11 +2,15 @@
 # A name matches any folder or file; a path with a slash matches from the root.
 excludes:
   - Architecture
-  - Benchmarks
+  # The benchmarks' own code; their `Shared` folder stays, for `test-sources-link-the-plugin-files`.
+  - Benchmarks/Package.swift
+  - Benchmarks/Tools
+  - Benchmarks/Benchmarks/GeneratorBenchmarks/GeneratorBenchmarks.swift
   - docs
   - Examples
   - site
-  # Symbolic links to files in Plugins/PackageGenerator; the rules read the originals.
-  - Tests/PackageGeneratorTests/Shared
 # Folders ending in Tests hold test code.
 testSuffixes: [Tests]
+# Read the `Shared` links into Plugins/PackageGenerator, so a rule can require links and not copies. The plugin files
+# are then also read under the link paths, which only the test rules see; neither finds anything in plugin code.
+symbolicLinks: follow
