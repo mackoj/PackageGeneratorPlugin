@@ -1,18 +1,33 @@
-# PackageGenerator
+# Package Generator
 
-Auto-generate complex multi-target SPM `Package.swift`. Read source imports, resolve dependencies, build targets. Works with heavily modularized projects + TCA.
+[![CI](https://github.com/mackoj/PackageGeneratorPlugin/actions/workflows/ci.yml/badge.svg)](https://github.com/mackoj/PackageGeneratorPlugin/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/mackoj/PackageGeneratorPlugin)](https://github.com/mackoj/PackageGeneratorPlugin/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-- **Backward compatible**: old config format still works
-- **Zero-exclusion filtering**: only links known targets + products (Apple SDKs auto-ignored)
-- **Advanced analysis**: unused target detection, dependency weight, exported files
-- **CLI-free config**: auto-finds `packageGenerator.yaml/yml/json`
-- **Full V2 architecture**: 7 epics from design, strict schema
+**[Website](https://mackoj.github.io/PackageGeneratorPlugin/)** ·
+**[Package Generator CLI](https://github.com/mackoj/PackageGeneratorCLI)** ·
+**[Migration guide](MIGRATION.md)** ·
+**[Performance](docs/performance.md)** ·
+**[Architecture rules](docs/architecture-rules.md)**
+
+A SwiftPM command plugin that generates `Package.swift` for heavily modularized projects. It reads the imports of every target, resolves each one to a local target, an external product or an Apple SDK, and writes the products and targets for you. Works well with hundreds of targets and with TCA-style feature modules.
+
+The plugin runs [Package Generator CLI](https://github.com/mackoj/PackageGeneratorCLI), which parses your sources with swift-syntax. SwiftPM downloads the CLI as a binary target, so you never install it yourself.
+
+- **Imports become dependencies**: local targets become `"Name"`, products of your root dependencies become `.product(name:package:)` with the URL-derived package identity
+- **Apple SDKs ignored safely**: a built-in list is skipped only after external products are checked, so a product named like an SDK (`Charts`) is kept
+- **Verbatim parameters**: `parameters` and `additionalDependencies` go into the manifest as written
+- **Analysis**: unused target detection, dependency weight, exported files
+- **Backward compatible**: the old `targetsParameters` config format still works
+- **Config auto-discovery**: finds `packageGenerator.yaml`, `.yml` or `.json`
+
+**Requirements**: Swift 6.2 (Xcode 26) on an Apple silicon Mac; `package-generator-cli` ships as an arm64 macOS binary.
 
 ## Quick Start
 
 1. **Install** (add to dependencies in your root Package.swift):
    ```swift
-   .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "1.0.0")
+   .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "1.0.5")
    ```
 
 2. **Create** config at project root. Choose YAML or JSON:
@@ -223,7 +238,7 @@ Output:
 
 // MARK: -
 // MARK: Features
-.target(name: Auth", ...),
+.target(name: "Auth", ...),
 .testTarget(name: "AuthTests", ...),
 ```
 
@@ -237,8 +252,11 @@ leafInfo: true
 
 Output:
 ```swift
-.target(name: "Core", dependencies: [...]),      // 3|2
-.target(name: "Auth", dependencies: [...]),      // 5|3 🚛
+  .target(
+    name: "Core",// [3|2]
+    ...
+  .target(
+    name: "Auth",// [5|3|🚛]
 ```
 
 First number = total deps, second = local deps. 🚛 = highest local count.
@@ -322,7 +340,7 @@ Errors appear in Xcode Report Navigator:
 
 - `❌ Error: Config file not found` — no `packageGenerator.{yaml,yml,json}` at root
 - `❌ Error: YAML decode failed` — invalid YAML syntax
-- `ℹ️ Dropped unresolved import 'SomeLib'` — import not in local targets or auto-discovered/mapped products; add a `mappers.imports` entry if it's a real dependency
+- `⚠️ Dropped unresolved import 'SomeLib'. If it's a system framework, ignore this.` — import not in local targets or auto-discovered/mapped products; add a `mappers.imports` entry if it's a real dependency
 - `📦 UnusedModule is used 0 times` — target never imported by others
 
 Use `verbose: "all"` for full diagnostics, `verbose: "cli"` or `verbose: "plugin"` for targeted output.
@@ -359,8 +377,18 @@ Fails if Package.swift has errors or config invalid.
 ## Troubleshooting
 
 - **Plugin not visible in Xcode?** Run "Resolve Packages" in Package.swift.
-- **YAML not working?** Ensure `Yams` dependency in plugin Package.swift.
+- **YAML not working?** The plugin converts YAML with its bundled `yaml-converter` tool; check the YAML syntax, or try the same config as `packageGenerator.json`.
 - **dry-run keeps running?** Check `dryRun: false` in config + check error logs.
+
+## Development
+
+```bash
+swift build --build-tests && swift test                        # plugin, yaml-converter and unit tests
+swift test --package-path Architecture                         # architecture rules (swift-llm-check)
+swift package --package-path Benchmarks benchmark              # benchmarks (package-benchmark, needs jemalloc)
+```
+
+A command plugin cannot be imported, so the tests and benchmarks compile the plugin's `PackagePlugin`-free files through symbolic links. Read [CODING_STANDARDS.md](CODING_STANDARDS.md) before changing code; [docs/architecture-rules.md](docs/architecture-rules.md) lists the rules CI enforces and [docs/performance.md](docs/performance.md) how to measure and profile.
 
 ## License
 
