@@ -44,9 +44,9 @@ enum Detect {
         return directories + toolPaths
     }
 
-    /// `appleDefaultSDKs` referenced inside a function named `filterImports`.
+    /// `appleDefaultSDKs` or `appleDefaultSDKSet` referenced inside a function named `filterImports`.
     static func earlySDKFiltering(in scope: Scope) -> [Match<Syntax>] {
-        scope.references(to: "appleDefaultSDKs").filter { match in
+        scope.references(to: "appleDefaultSDKs", "appleDefaultSDKSet").filter { match in
             sequence(first: match.node, next: \.parent).contains {
                 $0.as(FunctionDeclSyntax.self)?.name.text == "filterImports"
             }

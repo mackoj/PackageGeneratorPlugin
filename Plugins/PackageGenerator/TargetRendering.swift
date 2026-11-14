@@ -7,19 +7,19 @@ import Foundation
 /// Returns the pragma-mark group name for a target path.
 /// Group name = second path component after Sources/ or Tests/.
 func pragmaMarkGroupName(_ path: String, fallback: String) -> String {
-  let parts = path.split(separator: "/").map(String.init)
+  let parts = path.split(separator: "/")
   guard !parts.isEmpty else { return fallback }
 
   if parts.count >= 2, parts[0] == "Sources" || parts[0] == "Tests" {
-    return parts[1]
+    return String(parts[1])
   }
   if let idx = parts.firstIndex(of: "Sources"), parts.count > idx + 1 {
-    return parts[idx + 1]
+    return String(parts[idx + 1])
   }
   if let idx = parts.firstIndex(of: "Tests"), parts.count > idx + 1 {
-    return parts[idx + 1]
+    return String(parts[idx + 1])
   }
-  return parts.first ?? fallback
+  return parts.first.map(String.init) ?? fallback
 }
 
 /// Renders a single target as a `.target()`, `.testTarget()`, or `.macro()` block.
@@ -43,7 +43,6 @@ func renderSingleTarget(
   let s3 = String(repeating: " ", count: config.spaces * 3)
 
   let blockType = target.isMacro ? "macro" : (target.isTest ? "testTarget" : "target")
-  let appleExclusions = Set(appleDefaultSDKs)
 
   // Build multi-line dependencies section using three-way resolution.
   var depsStr = ""
@@ -55,7 +54,7 @@ func renderSingleTarget(
         resolvedLines.append(extDep)
       } else if allLocalTargetNames.contains(dep) {
         resolvedLines.append("\"\(dep)\"")
-      } else if appleExclusions.contains(dep) {
+      } else if appleDefaultSDKSet.contains(dep) {
         // Known Apple SDK or user-excluded framework — skip silently.
       } else {
         warn("Dropped unresolved import '\(dep)'. If it's a system framework, ignore this.")
@@ -104,15 +103,16 @@ func generateTargetsSection(
   leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)],
   warn: (String) -> Void
 ) -> String {
-  let sorted = parsedPackages.sorted { a, b in
-    let ag = pragmaMarkGroupName(a.path, fallback: a.name)
-    let bg = pragmaMarkGroupName(b.path, fallback: b.name)
-    if ag != bg { return ag < bg }
-    let ao = typeOrder(a)
-    let bo = typeOrder(b)
-    if ao != bo { return ao < bo }
-    return a.name < b.name
-  }
+  // Each target's group name is computed once, not on every comparison of the sort.
+  let sorted = parsedPackages
+    .map { (group: pragmaMarkGroupName($0.path, fallback: $0.name), target: $0) }
+    .sorted { a, b in
+      if a.group != b.group { return a.group < b.group }
+      let ao = typeOrder(a.target)
+      let bo = typeOrder(b.target)
+      if ao != bo { return ao < bo }
+      return a.target.name < b.target.name
+    }
 
   let allLocalTargetNames = Set(parsedPackages.map { $0.name })
 
@@ -120,12 +120,12 @@ func generateTargetsSection(
   var last = ""
   var lastGroup = ""
 
-  for target in sorted {
+  for (group, target) in sorted {
     if !last.isEmpty {
-      output += last + ",\n"
+      output += last
+      output += ",\n"
     }
     if config.pragmaMark {
-      let group = pragmaMarkGroupName(target.path, fallback: target.name)
       if group != lastGroup {
         output += "// MARK: -\n"
         output += "// MARK: \(group)\n"
@@ -136,7 +136,8 @@ func generateTargetsSection(
   }
 
   if !last.isEmpty {
-    output += last + "\n"
+    output += last
+    output += "\n"
   }
   output += "])\n"
   return output

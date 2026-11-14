@@ -19,7 +19,7 @@ func computeDependencyWeight(
   // First pass: compute weights
   for target in targets {
     let totalDeps = target.dependencies.count
-    let localDeps = target.dependencies.filter { localTargetNames.contains($0) }.count
+    let localDeps = target.dependencies.count(where: localTargetNames.contains)
     
     weights[target.name] = (total: totalDeps, local: localDeps, isHeaviest: false)
     
@@ -45,9 +45,9 @@ func analyzeDependencyGraph(_ targets: [ParsedPackage]) -> DependencyGraphAnalys
   var analysis = DependencyGraphAnalysis()
   
   for target in targets {
-    let localDeps = target.dependencies.filter { localTargetNames.contains($0) }
+    let hasLocalDeps = target.dependencies.contains(where: localTargetNames.contains)
     
-    if localDeps.isEmpty && !target.isTest {
+    if !hasLocalDeps && !target.isTest {
       analysis.leafNodes.append(target.name)
     }
     

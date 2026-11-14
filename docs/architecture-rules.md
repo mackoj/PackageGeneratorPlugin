@@ -86,7 +86,7 @@ Good:
 let packageIdentity = dependency.package.id
 ```
 
-### `filterImports` does not consult `appleDefaultSDKs`.
+### `filterImports` does not consult `appleDefaultSDKs` or `appleDefaultSDKSet`.
 
 `apple-sdk-filtering-is-deferred`: Imports are matched to external products and local targets before Apple SDKs are skipped. Filtering SDK names out earlier silently drops a package product that shares a name with an SDK, like `Charts` (CODING_STANDARDS.md, "Apple SDK filtering happens at render time").
 
@@ -102,7 +102,7 @@ func filterImports(rawImports: [String], …) -> [String] {
 Good:
 
 ```swift
-} else if appleSDKs.contains(dep) {
+} else if appleDefaultSDKSet.contains(dep) {
   // Known Apple SDK: skip silently, after externalDeps and local targets were checked.
 ```
 

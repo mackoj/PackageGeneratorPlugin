@@ -77,7 +77,7 @@ extension Rule {
 
     static let appleSDKFilteringIsDeferred = Rule(
         id: "apple-sdk-filtering-is-deferred",
-        title: "`filterImports` does not consult `appleDefaultSDKs`.",
+        title: "`filterImports` does not consult `appleDefaultSDKs` or `appleDefaultSDKSet`.",
         category: .output,
         rationale: """
             Imports are matched to external products and local targets before Apple SDKs are skipped. Filtering SDK \
@@ -93,7 +93,7 @@ extension Rule {
               rawImports.filter { !appleDefaultSDKs.contains($0) }
             """,
         goodExample: """
-            } else if appleSDKs.contains(dep) {
+            } else if appleDefaultSDKSet.contains(dep) {
               // Known Apple SDK: skip silently, after externalDeps and local targets were checked.
             """
     )

@@ -72,13 +72,13 @@ import Testing
             in: scope(
                 """
                 func filterImports(rawImports: [String]) -> [String] {
-                  rawImports.filter { !appleDefaultSDKs.contains($0) }
+                  rawImports.filter { !appleDefaultSDKs.contains($0) && !appleDefaultSDKSet.contains($0) }
                 }
                 func renderSingleTarget() {
-                  let appleExclusions = Set(appleDefaultSDKs)
+                  let skipped = appleDefaultSDKSet.contains(dep)
                 }
                 """))
-        #expect(found.map(\.location.line) == [2])
+        #expect(found.map(\.location.line) == [2, 2])
     }
 
     @Test func xcTestImportsAreFound() {
