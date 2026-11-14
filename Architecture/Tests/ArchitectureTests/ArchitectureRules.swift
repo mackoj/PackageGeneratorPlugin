@@ -9,7 +9,7 @@ struct ArchitectureRules {
 
     @Test func testSourcesLinkThePluginFiles() throws {
         let sources = try SharedSource.all(in: repository())
-        #expect(sources.count >= 3)
+        #expect(sources.count >= 10)
         expectNone(Detect.unlinkedTestSources(sources), rule: .testSourcesLinkThePluginFiles)
     }
 

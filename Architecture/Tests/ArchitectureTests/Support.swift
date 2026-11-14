@@ -5,10 +5,11 @@ import LLMCheck
 /// shared by all suites, which Swift Testing runs in parallel.
 func repository() throws -> Codebase { try Codebase() }
 
-/// Where the test target compiles the plugin's pure files from. A `.plugin` target cannot be imported.
-let sharedTestSourcesFolder = "Tests/PackageGeneratorTests/Shared"
+/// Where the test target and the benchmarks compile the plugin's pure files from. A `.plugin` target cannot be
+/// imported.
+let sharedSourceFolders = ["Tests/PackageGeneratorTests/Shared", "Benchmarks/Benchmarks/GeneratorBenchmarks/Shared"]
 
-/// A Swift file in `sharedTestSourcesFolder`, and where it points when it is a symbolic link.
+/// A Swift file in one of `sharedSourceFolders`, and where it points when it is a symbolic link.
 struct SharedSource: Sendable {
     /// From the repository root, like `Tests/PackageGeneratorTests/Shared/ParsedPackage.swift`.
     let relativePath: String
@@ -16,22 +17,25 @@ struct SharedSource: Sendable {
     /// when the file is a regular file.
     let destination: String?
 
-    /// The Swift files in `sharedTestSourcesFolder` of `codebase`, read from the file system: `Codebase` excludes the
-    /// folder so that the rules read each file once, under its real path.
+    /// The Swift files in `sharedSourceFolders` of `codebase`, read from the file system: `Codebase` excludes the
+    /// folders so that the rules read each file once, under its real path.
     static func all(in codebase: Codebase) throws -> [SharedSource] {
         let fileManager = FileManager.default
-        let folder = codebase.root.appendingPathComponent(sharedTestSourcesFolder)
-        return try fileManager.contentsOfDirectory(atPath: folder.path).sorted()
-            .filter { $0.hasSuffix(".swift") }
-            .map { name in
-                let link = folder.appendingPathComponent(name)
-                let target = try? fileManager.destinationOfSymbolicLink(atPath: link.path)
-                let destination = target.map {
-                    URL(fileURLWithPath: $0, relativeTo: folder).standardizedFileURL.path
-                        .replacingOccurrences(of: codebase.root.standardizedFileURL.path + "/", with: "")
+        let root = codebase.root.standardizedFileURL.path + "/"
+        return try sharedSourceFolders.flatMap { relativeFolder in
+            let folder = codebase.root.appendingPathComponent(relativeFolder)
+            return try fileManager.contentsOfDirectory(atPath: folder.path).sorted()
+                .filter { $0.hasSuffix(".swift") }
+                .map { name in
+                    let link = folder.appendingPathComponent(name)
+                    let target = try? fileManager.destinationOfSymbolicLink(atPath: link.path)
+                    let destination = target.map {
+                        URL(fileURLWithPath: $0, relativeTo: folder).standardizedFileURL.path
+                            .replacingOccurrences(of: root, with: "")
+                    }
+                    return SharedSource(relativePath: "\(relativeFolder)/\(name)", destination: destination)
                 }
-                return SharedSource(relativePath: "\(sharedTestSourcesFolder)/\(name)", destination: destination)
-            }
+        }
     }
 }
 
