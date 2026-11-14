@@ -44,8 +44,10 @@ diff Package.swift Package_generated.swift
 | Config load | `ConfigLoader.swift` | Finds `packageGenerator.{yaml,yml,json}`, converts YAML via `yaml-converter` subprocess, decodes into `ConfigurationV2` |
 | 2 — Discovery | `TargetResolution.swift` | `resolveTargetPaths` (shortest-path logic), `linkTestTargets` (strips "Tests" suffix), `discoverExternalDeps` (reads SPM graph), `runCLI` (invokes `package-generator-cli`) |
 | 3 — Import Analysis | `ImportAnalysis.swift` | `filterImports` — drops self-imports and explicit exclusions; Apple SDK filtering is intentionally **deferred** to render phase |
-| 4 — Code Generation | `CodeGeneration.swift` | `renderSingleTarget`, `generateProductsSection`, `generateTargetsSection`, `writeOutput` |
-| 5 — Advanced Features | `AdvancedFeatures.swift` | `generateExportedFiles`, `detectUnusedTargets`, `computeDependencyWeight` |
+| 4 — Code Generation | `TargetRendering.swift`, `ProductGeneration.swift`, `CodeGeneration.swift` | pure `renderSingleTarget`, `generateTargetsSection`, `generateProductsSection`, `renderPackageContent`; `writeOutput` writes the file |
+| 5 — Advanced Features | `AdvancedFeatures.swift`, `DependencyGraph.swift` | `generateExportedFiles`, `detectUnusedTargets`; pure `computeDependencyWeight`, `analyzeDependencyGraph` |
+
+Files with no `PackagePlugin` import are symlinked into `Tests/PackageGeneratorTests/Shared` (and `Benchmarks/Benchmarks/GeneratorBenchmarks/Shared`) so the tests and benchmarks compile them; they report warnings through a closure instead of `Diagnostics`.
 
 Entry point: `Plugin.swift` → `PackageGeneratorV2.generate(config:context:)`
 
@@ -91,7 +93,7 @@ additionalDependencies:
   - '.product(name: "PreviewSnapshots", package: "swiftui-preview-snapshots")'
 ```
 
-### Dependency Resolution Priority (in `renderSingleTarget`)
+### Dependency Resolution Priority (in `renderSingleTarget`, `TargetRendering.swift`)
 1. `externalDeps` map → `.product(name:package:)` reference
 2. `allLocalTargetNames` set → `"TargetName"` string literal
 3. Apple SDK built-in list (`AppleSDKs.swift`) → silently skipped

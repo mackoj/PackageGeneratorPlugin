@@ -7,15 +7,15 @@ Read during review. The mechanical part is enforced by the `Architecture/` packa
 
 - **One pipeline, top-level phase functions.** `Plugin.swift` loads the config and calls
   `PackageGeneratorV2.generate`, which runs the phases in order: discovery (`TargetResolution.swift`), import
-  filtering (`ImportAnalysis.swift`), rendering (`CodeGeneration.swift`, `ProductGeneration.swift`) and the optional
-  extras (`AdvancedFeatures.swift`). A phase is a free function at file scope, not a method on a new type.
+  filtering (`ImportAnalysis.swift`), rendering (`TargetRendering.swift`, `ProductGeneration.swift`, written by
+  `CodeGeneration.swift`) and the optional extras (`AdvancedFeatures.swift`, `DependencyGraph.swift`). A phase is a free function at file scope, not a method on a new type.
 - **Pure core, thin shell.** Code that turns a configuration and a list of `ParsedPackage` into text does not import
-  `PackagePlugin`: it takes values and returns values. Only
+  `PackagePlugin`: it takes values and returns values, and reports warnings through a closure the caller passes. Only
   the shell (config loading, path discovery, running `package-generator-cli`, writing files, `Diagnostics`) touches
   `PackagePlugin`, the file system or a process.
 - **The tests compile the real files.** A `.plugin` target cannot be imported, so `Tests/PackageGeneratorTests/Shared`
-  holds symbolic links to the pure files in `Plugins/PackageGenerator`, never copies. A file that gains a
-  `PackagePlugin` import can no longer be linked there.
+  and `Benchmarks/Benchmarks/GeneratorBenchmarks/Shared` hold symbolic links to the pure files in
+  `Plugins/PackageGenerator`, never copies. A file that gains a `PackagePlugin` import can no longer be linked there.
 - **Swift 6 language mode.** All code compiles under strict concurrency (`swiftLanguageModes: [.v6]`).
 
 ## Behaviour that users rely on
