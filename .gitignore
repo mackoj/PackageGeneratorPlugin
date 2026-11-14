@@ -15,3 +15,9 @@ packageGenerator.json
 packageGenerator.yaml
 packageGenerator.yml
 Package_generated.swift
+/Architecture/.build
+/Architecture/.swiftpm
+/Architecture/Package.resolved
+/Benchmarks/.build
+/Benchmarks/.swiftpm
+/Benchmarks/.benchmarkBaselines
