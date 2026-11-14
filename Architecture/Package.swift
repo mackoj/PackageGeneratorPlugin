@@ -8,7 +8,7 @@ let package = Package(
     name: "Architecture",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/mackoj/swift-llm-check.git", from: "0.4.1"),
+        .package(url: "https://github.com/mackoj/swift-llm-check.git", from: "0.5.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "601.0.0"..<"700.0.0"),
     ],
     targets: [

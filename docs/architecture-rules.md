@@ -6,9 +6,9 @@ The mechanical part of `CODING_STANDARDS.md`, enforced by the `Architecture/` pa
 
 The pure core and the plugin shell. Read before you add an `import` or a file to `Plugins`.
 
-### Every Swift file in `Tests/PackageGeneratorTests/Shared` is a symbolic link into `Plugins/PackageGenerator`.
+### Every Swift file in the tests' and benchmarks' `Shared` folders is a symbolic link into `Plugins/PackageGenerator`.
 
-`test-sources-link-the-plugin-files`: A `.plugin` target cannot be imported, so the test target compiles the plugin's own files through symbolic links (CODING_STANDARDS.md, "The tests compile the real files"). A copy, or a link to anywhere else, would let the tests pass against code the plugin no longer runs.
+`test-sources-link-the-plugin-files`: A `.plugin` target cannot be imported, so the test target and the benchmarks compile the plugin's own files through symbolic links in `Tests/PackageGeneratorTests/Shared` and `Benchmarks/Benchmarks/GeneratorBenchmarks/Shared` (CODING_STANDARDS.md, "The tests compile the real files"). A copy, or a link to anywhere else, would test and measure code the plugin no longer runs.
 
 **How to fix:** Replace the file with a relative link: `ln -s ../../../Plugins/PackageGenerator/Name.swift Tests/PackageGeneratorTests/Shared/Name.swift`.
 
@@ -26,7 +26,7 @@ Shared/ParsedPackage.swift -> ../../../Plugins/PackageGenerator/ParsedPackage.sw
 
 ### A plugin file the tests link imports only Foundation.
 
-`core-files-import-only-foundation`: The generator's pure core (CODING_STANDARDS.md, "Pure core, thin shell") is compiled by the plugin and by the test target, which cannot import `PackagePlugin`. Yams, the package's only dependency, belongs to `yaml-converter`, not the plugin.
+`core-files-import-only-foundation`: The generator's pure core (CODING_STANDARDS.md, "Pure core, thin shell") is compiled by the plugin, the test target and the benchmarks; the last two cannot import `PackagePlugin`. Yams, the package's only dependency, belongs to `yaml-converter`, not the plugin.
 
 **How to fix:** Keep `PackagePlugin` in the shell: take the value the core needs as a parameter, and report warnings through a closure the caller passes (it calls `Diagnostics.emit`).
 
@@ -86,7 +86,7 @@ Good:
 let packageIdentity = dependency.package.id
 ```
 
-### `filterImports` does not consult `appleDefaultSDKs`.
+### `filterImports` does not consult `appleDefaultSDKs` or `appleDefaultSDKSet`.
 
 `apple-sdk-filtering-is-deferred`: Imports are matched to external products and local targets before Apple SDKs are skipped. Filtering SDK names out earlier silently drops a package product that shares a name with an SDK, like `Charts` (CODING_STANDARDS.md, "Apple SDK filtering happens at render time").
 
@@ -102,7 +102,7 @@ func filterImports(rawImports: [String], …) -> [String] {
 Good:
 
 ```swift
-} else if appleSDKs.contains(dep) {
+} else if appleDefaultSDKSet.contains(dep) {
   // Known Apple SDK: skip silently, after externalDeps and local targets were checked.
 ```
 

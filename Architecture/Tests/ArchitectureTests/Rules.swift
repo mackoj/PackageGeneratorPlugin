@@ -3,12 +3,13 @@ import LLMCheck
 extension Rule {
     static let testSourcesLinkThePluginFiles = Rule(
         id: "test-sources-link-the-plugin-files",
-        title: "Every Swift file in `Tests/PackageGeneratorTests/Shared` is a symbolic link into `Plugins/PackageGenerator`.",
+        title: "Every Swift file in the tests' and benchmarks' `Shared` folders is a symbolic link into `Plugins/PackageGenerator`.",
         category: .structure,
         rationale: """
-            A `.plugin` target cannot be imported, so the test target compiles the plugin's own files through \
-            symbolic links (CODING_STANDARDS.md, "The tests compile the real files"). A copy, or a link to anywhere \
-            else, would let the tests pass against code the plugin no longer runs.
+            A `.plugin` target cannot be imported, so the test target and the benchmarks compile the plugin's own \
+            files through symbolic links in `Tests/PackageGeneratorTests/Shared` and \
+            `Benchmarks/Benchmarks/GeneratorBenchmarks/Shared` (CODING_STANDARDS.md, "The tests compile the real \
+            files"). A copy, or a link to anywhere else, would test and measure code the plugin no longer runs.
             """,
         howToFix: """
             Replace the file with a relative link: \
@@ -23,8 +24,8 @@ extension Rule {
         title: "A plugin file the tests link imports only Foundation.",
         category: .structure,
         rationale: """
-            The generator's pure core (CODING_STANDARDS.md, "Pure core, thin shell") is compiled by the plugin and by \
-            the test target, which cannot import `PackagePlugin`. Yams, the package's only dependency, belongs to \
+            The generator's pure core (CODING_STANDARDS.md, "Pure core, thin shell") is compiled by the plugin, the \
+            test target and the benchmarks; the last two cannot import `PackagePlugin`. Yams, the package's only dependency, belongs to \
             `yaml-converter`, not the plugin.
             """,
         howToFix: """
@@ -76,7 +77,7 @@ extension Rule {
 
     static let appleSDKFilteringIsDeferred = Rule(
         id: "apple-sdk-filtering-is-deferred",
-        title: "`filterImports` does not consult `appleDefaultSDKs`.",
+        title: "`filterImports` does not consult `appleDefaultSDKs` or `appleDefaultSDKSet`.",
         category: .output,
         rationale: """
             Imports are matched to external products and local targets before Apple SDKs are skipped. Filtering SDK \
@@ -92,7 +93,7 @@ extension Rule {
               rawImports.filter { !appleDefaultSDKs.contains($0) }
             """,
         goodExample: """
-            } else if appleSDKs.contains(dep) {
+            } else if appleDefaultSDKSet.contains(dep) {
               // Known Apple SDK: skip silently, after externalDeps and local targets were checked.
             """
     )

@@ -274,3 +274,6 @@ let appleDefaultSDKs = [
   "os",
   "simd"
 ]
+
+/// `appleDefaultSDKs` as a set, built once: rendering looks every unresolved import up in it.
+let appleDefaultSDKSet = Set(appleDefaultSDKs)

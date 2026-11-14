@@ -1,5 +1,4 @@
 import Foundation
-import PackagePlugin
 
 // MARK: - Phase 3: Import Analysis
 
@@ -8,12 +7,14 @@ import PackagePlugin
 /// Apple SDK filtering is deferred to the rendering phase so that external package
 /// products whose names collide with Apple SDK names (e.g. "Charts") are never
 /// silently discarded before we've had a chance to look them up in externalDeps.
-/// Returns a sorted list for deterministic output.
+/// Returns a sorted list for deterministic output. `remark` receives a message for each excluded import.
+///
+/// Kept free of `PackagePlugin` so the test target and the benchmarks can compile this file directly.
 func filterImports(
   rawImports: [String],
   targetName: String,
   exclusions: ConfigurationV2.Exclusions,
-  verbose: Bool
+  remark: ((String) -> Void)? = nil
 ) -> [String] {
   let importExclusions = Set(exclusions.imports)
   var filtered: [String] = []
@@ -24,9 +25,7 @@ func filterImports(
 
     // Skip explicit import exclusions
     if importExclusions.contains(importName) {
-      if verbose {
-        Diagnostics.emit(.remark, "Skipped excluded import: \(importName)")
-      }
+      remark?("Skipped excluded import: \(importName)")
       continue
     }
 

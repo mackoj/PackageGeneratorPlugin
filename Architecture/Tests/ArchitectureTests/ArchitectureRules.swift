@@ -7,14 +7,26 @@ struct ArchitectureRules {
     static func plugin() throws -> Scope { try repository().productionCode.in("Plugins/PackageGenerator") }
     static func tests() throws -> Scope { try repository().testCode.in("Tests") }
 
+    /// The Swift files in `sharedSourceFolders`, links included (`symbolicLinks: follow`).
+    static func shared() throws -> [SourceFile] { try repository().allCode.in(sharedSourceFolders).files }
+
     @Test func testSourcesLinkThePluginFiles() throws {
-        let sources = try SharedSource.all(in: repository())
-        #expect(sources.count >= 3)
-        expectNone(Detect.unlinkedTestSources(sources), rule: .testSourcesLinkThePluginFiles)
+        let sources = try Self.shared()
+        #expect(sources.count >= 10)
+        // `SourceFile` is not a `Finding` in swift-llm-check 0.5.0, so each offending file becomes a `Violation`.
+        let unlinked = sources.filter { $0.symbolicLinkDestination?.hasPrefix("Plugins/PackageGenerator/") != true }
+        expectNone(
+            unlinked.map { file in
+                Violation(
+                    location: Location(filePath: file.path, relativePath: file.relativePath, line: 1, column: 1),
+                    snippet: file.symbolicLinkDestination.map { "\(file.relativePath) -> \($0)" }
+                        ?? "\(file.relativePath) is a regular file")
+            },
+            rule: .testSourcesLinkThePluginFiles)
     }
 
     @Test func coreFilesImportOnlyFoundation() throws {
-        let linked = try SharedSource.all(in: repository()).compactMap(\.destination)
+        let linked = Array(Set(try Self.shared().compactMap(\.symbolicLinkDestination))).sorted()
         #expect(linked.count >= 3)
         expectNone(Detect.coreImports(in: try Self.plugin(), files: linked), rule: .coreFilesImportOnlyFoundation)
     }
@@ -44,11 +56,11 @@ struct ArchitectureRules {
     @Test func testsUseSwiftTesting() throws {
         let tests = try Self.tests()
         #expect(tests.containing("import Testing").relativePaths.count >= 1)
-        expectNone(Detect.xcTestImports(in: tests), rule: .testsUseSwiftTesting)
+        expectNone(tests.xcTestImports, rule: .testsUseSwiftTesting)
     }
 
     @Test func testsAreNotDisabled() throws {
-        expectNone(Detect.disabledTests(in: try Self.tests()), rule: .testsAreNotDisabled)
+        expectNone(try Self.tests().disabledTests, rule: .testsAreNotDisabled)
     }
 }
 

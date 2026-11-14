@@ -7,15 +7,6 @@ import Testing
         Scope(files: [SourceFile(path: path, source: source)])
     }
 
-    @Test func unlinkedTestSourcesAreFound() {
-        let found = Detect.unlinkedTestSources([
-            SharedSource(relativePath: "Tests/T/Shared/A.swift", destination: "Plugins/PackageGenerator/A.swift"),
-            SharedSource(relativePath: "Tests/T/Shared/B.swift", destination: nil),
-            SharedSource(relativePath: "Tests/T/Shared/C.swift", destination: "Sources/Other/C.swift"),
-        ])
-        #expect(found.map(\.location.relativePath) == ["Tests/T/Shared/B.swift", "Tests/T/Shared/C.swift"])
-    }
-
     @Test func coreImportsAreFound() {
         let plugin = Scope(files: [
             SourceFile(path: "Plugins/PackageGenerator/Core.swift", source: "import Foundation\nimport PackagePlugin"),
@@ -72,28 +63,12 @@ import Testing
             in: scope(
                 """
                 func filterImports(rawImports: [String]) -> [String] {
-                  rawImports.filter { !appleDefaultSDKs.contains($0) }
+                  rawImports.filter { !appleDefaultSDKs.contains($0) && !appleDefaultSDKSet.contains($0) }
                 }
                 func renderSingleTarget() {
-                  let appleExclusions = Set(appleDefaultSDKs)
+                  let skipped = appleDefaultSDKSet.contains(dep)
                 }
                 """))
-        #expect(found.map(\.location.line) == [2])
-    }
-
-    @Test func xcTestImportsAreFound() {
-        let found = Detect.xcTestImports(in: scope("import XCTest\nimport Testing", at: "Tests/T/A.swift"))
-        #expect(found.map(\.location.line) == [1])
-    }
-
-    @Test func disabledTestsAreFound() {
-        let found = Detect.disabledTests(
-            in: scope(
-                """
-                @Test(.disabled("flaky")) func a() {}
-                @Suite(.disabled()) struct B {}
-                @Test func c() { rule.disabled() }
-                """, at: "Tests/T/A.swift"))
-        #expect(found.map(\.location.line) == [1, 2])
+        #expect(found.map(\.location.line) == [2, 2])
     }
 }
