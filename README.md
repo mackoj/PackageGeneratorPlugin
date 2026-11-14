@@ -27,7 +27,7 @@ The plugin runs [Package Generator CLI](https://github.com/mackoj/PackageGenerat
 
 1. **Install** (add to dependencies in your root Package.swift):
    ```swift
-   .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "1.0.5")
+   .package(url: "https://github.com/mackoj/PackageGeneratorPlugin.git", from: "1.0.6")
    ```
 
 2. **Create** config at project root. Choose YAML or JSON:
