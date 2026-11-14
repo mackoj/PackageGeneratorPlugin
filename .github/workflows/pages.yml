@@ -1,0 +1,41 @@
+name: Pages
+
+# Publishes site/, the project's landing page, to GitHub Pages when it changes on main.
+on:
+  push:
+    branches: [main]
+    paths: [site/**, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
