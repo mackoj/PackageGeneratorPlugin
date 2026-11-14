@@ -1,0 +1,168 @@
+import Foundation
+
+// MARK: - Phase 4: Target rendering
+//
+// Kept free of `PackagePlugin` so the test target and the benchmarks can compile this file directly.
+
+/// Returns the pragma-mark group name for a target path.
+/// Group name = second path component after Sources/ or Tests/.
+func pragmaMarkGroupName(_ path: String, fallback: String) -> String {
+  let parts = path.split(separator: "/").map(String.init)
+  guard !parts.isEmpty else { return fallback }
+
+  if parts.count >= 2, parts[0] == "Sources" || parts[0] == "Tests" {
+    return parts[1]
+  }
+  if let idx = parts.firstIndex(of: "Sources"), parts.count > idx + 1 {
+    return parts[idx + 1]
+  }
+  if let idx = parts.firstIndex(of: "Tests"), parts.count > idx + 1 {
+    return parts[idx + 1]
+  }
+  return parts.first ?? fallback
+}
+
+/// Renders a single target as a `.target()`, `.testTarget()`, or `.macro()` block.
+/// Matches V1's `fakeTargetToSwiftCode` format exactly.
+///
+/// Resolution priority per import:
+///   1. In `externalDeps`          → `.product(name:package:)` reference
+///   2. In `allLocalTargetNames`   → `"TargetName"` string literal
+///   3. In Apple SDK built-in list  → silently skipped
+///   4. Otherwise                  → warning emitted, dep skipped
+func renderSingleTarget(
+  _ target: ParsedPackage,
+  config: ConfigurationV2,
+  externalDeps: [String: String],
+  allLocalTargetNames: Set<String>,
+  leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)],
+  warn: (String) -> Void
+) -> String {
+  let s1 = String(repeating: " ", count: config.spaces)
+  let s2 = String(repeating: " ", count: config.spaces * 2)
+  let s3 = String(repeating: " ", count: config.spaces * 3)
+
+  let blockType = target.isMacro ? "macro" : (target.isTest ? "testTarget" : "target")
+  let appleExclusions = Set(appleDefaultSDKs)
+
+  // Build multi-line dependencies section using three-way resolution.
+  var depsStr = ""
+  let extraDeps = target.additionalDependencies ?? []
+  if !target.dependencies.isEmpty || !extraDeps.isEmpty {
+    var resolvedLines: [String] = []
+    for dep in target.dependencies {
+      if let extDep = externalDeps[dep] {
+        resolvedLines.append(extDep)
+      } else if allLocalTargetNames.contains(dep) {
+        resolvedLines.append("\"\(dep)\"")
+      } else if appleExclusions.contains(dep) {
+        // Known Apple SDK or user-excluded framework — skip silently.
+      } else {
+        warn("Dropped unresolved import '\(dep)'. If it's a system framework, ignore this.")
+      }
+    }
+    let allLines = resolvedLines.sorted().map { "\(s3)\($0)" }
+      + extraDeps.map { "\(s3)\($0)" }
+    if !allLines.isEmpty {
+      depsStr = "\n\(s2)dependencies: [\n" + allLines.joined(separator: ",\n") + "\n\(s2)],"
+    }
+  }
+
+  // Leaf info comment (inline after name, before dependencies)
+  var leafComment = ""
+  if config.leafInfo, let w = leafWeights[target.name] {
+    let emoji = w.isHeaviest ? "|🚛" : ""
+    leafComment = "// [\(w.total)|\(w.local)\(emoji)]"
+  }
+
+  // Extra parameters after path (verbatim from config's targetsParameters)
+  var extraParams = ""
+
+  // Structured exclude list
+  let sortedExcludes = target.exclude.sorted()
+  if !sortedExcludes.isEmpty {
+    let excLines = sortedExcludes.map { "\(s3)\"\($0)\"" }.joined(separator: ",\n")
+    extraParams += ",\n\(s2)exclude: [\n\(excLines)\n\(s2)]"
+  }
+
+  // Remaining parameters (resources:, swiftSettings:, etc.) rendered verbatim
+  for param in target.parameters ?? [] {
+    let trimmed = param.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { continue }
+    extraParams += ",\n\(s2)\(trimmed)"
+  }
+
+  return "\(s1).\(blockType)(\n\(s2)name: \"\(target.name)\",\(leafComment)\(depsStr)\n\(s2)path: \"\(target.path)\"\(extraParams)\n\(s1))"
+}
+
+/// Generates the targets `package.targets.append(contentsOf: [...])` section
+/// with optional pragma-mark grouping.
+func generateTargetsSection(
+  parsedPackages: [ParsedPackage],
+  config: ConfigurationV2,
+  externalDeps: [String: String],
+  leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)],
+  warn: (String) -> Void
+) -> String {
+  let sorted = parsedPackages.sorted { a, b in
+    let ag = pragmaMarkGroupName(a.path, fallback: a.name)
+    let bg = pragmaMarkGroupName(b.path, fallback: b.name)
+    if ag != bg { return ag < bg }
+    let ao = typeOrder(a)
+    let bo = typeOrder(b)
+    if ao != bo { return ao < bo }
+    return a.name < b.name
+  }
+
+  let allLocalTargetNames = Set(parsedPackages.map { $0.name })
+
+  var output = "// MARK: - Products\npackage.targets.append(contentsOf: [\n"
+  var last = ""
+  var lastGroup = ""
+
+  for target in sorted {
+    if !last.isEmpty {
+      output += last + ",\n"
+    }
+    if config.pragmaMark {
+      let group = pragmaMarkGroupName(target.path, fallback: target.name)
+      if group != lastGroup {
+        output += "// MARK: -\n"
+        output += "// MARK: \(group)\n"
+        lastGroup = group
+      }
+    }
+    last = renderSingleTarget(target, config: config, externalDeps: externalDeps, allLocalTargetNames: allLocalTargetNames, leafWeights: leafWeights, warn: warn)
+  }
+
+  if !last.isEmpty {
+    output += last + "\n"
+  }
+  output += "])\n"
+  return output
+}
+
+/// The generated file without its header: the optional package count mark, then the products and targets sections.
+func renderPackageContent(
+  _ parsedPackages: [ParsedPackage],
+  config: ConfigurationV2,
+  externalDeps: [String: String],
+  leafWeights: [String: (total: Int, local: Int, isHeaviest: Bool)],
+  warn: (String) -> Void
+) -> String {
+  let nonTestCount = parsedPackages.filter { !$0.isTest }.count
+  let productsSection = generateProductsSection(parsedPackages: parsedPackages, config: config)
+  let targetsSection = generateTargetsSection(parsedPackages: parsedPackages, config: config, externalDeps: externalDeps, leafWeights: leafWeights, warn: warn)
+
+  return (config.includePackageCountMark ? "// MARK: - Generated \(nonTestCount) packages\n\n" : "")
+    + productsSection
+    + targetsSection
+}
+
+// MARK: - Helpers
+
+private func typeOrder(_ target: ParsedPackage) -> Int {
+  if target.isTest { return 1 }
+  return 0  // regular and macro targets sort together alphabetically
+}
+

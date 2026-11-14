@@ -52,7 +52,7 @@ struct PackageGeneratorV2 {
           rawImports: rawImports,
           targetName: targetSpec.name,
           exclusions: config.exclusions,
-          verbose: config.verbosePlugin
+          remark: config.verbosePlugin ? { Diagnostics.emit(.remark, $0) } : nil
         )
 
         let parsed = ParsedPackage(
