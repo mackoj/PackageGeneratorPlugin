@@ -9,6 +9,7 @@ private func target(
   path: String? = nil,
   isTest: Bool = false,
   isMacro: Bool = false,
+  isExecutable: Bool = false,
   dependencies: [String] = [],
   exclude: [String] = [],
   parameters: [String]? = nil,
@@ -18,6 +19,7 @@ private func target(
     name: name,
     isTest: isTest,
     isMacro: isMacro,
+    isExecutable: isExecutable,
     dependencies: dependencies,
     path: path ?? "Sources/\(name)",
     fullPath: "/tmp/\(name)",
@@ -111,6 +113,14 @@ struct TargetRenderingTests {
       ])
 
       """)
+  }
+
+  @Test("An executable target renders as `.executableTarget` with its resolved imports")
+  func executableTarget() {
+    let (text, warnings) = render([target("tool", isExecutable: true, dependencies: ["Core"]), target("Core")])
+    #expect(text.contains("  .executableTarget(\n    name: \"tool\",\n    dependencies: [\n      \"Core\"\n    ],"))
+    #expect(text.contains(#".executable(name: "tool", targets: ["tool"])"#))
+    #expect(warnings.isEmpty)
   }
 
   @Test("An external product wins over an Apple SDK of the same name")

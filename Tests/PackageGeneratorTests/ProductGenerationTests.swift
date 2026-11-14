@@ -12,6 +12,7 @@ private func lib(
   path: String? = nil,
   isTest: Bool = false,
   isMacro: Bool = false,
+  isExecutable: Bool = false,
   libraryType: LibraryType? = nil,
   productName: String? = nil
 ) -> ParsedPackage {
@@ -19,6 +20,7 @@ private func lib(
     name: name,
     isTest: isTest,
     isMacro: isMacro,
+    isExecutable: isExecutable,
     dependencies: [],
     path: path ?? "Sources/\(name)",
     fullPath: "/tmp/\(name)",
@@ -36,7 +38,7 @@ private func productLines(
   generateProductsSection(parsedPackages: packages, config: config)
     .split(separator: "\n")
     .map(String.init)
-    .filter { $0.contains(".library(") }
+    .filter { $0.contains(".library(") || $0.contains(".executable(") }
     .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: ",")) }
 }
 
@@ -64,6 +66,15 @@ struct ProductGenerationRegressionTests {
   func testAndMacroTargetsAreSkipped() {
     let packages = [lib("Foo"), lib("FooTests", isTest: true), lib("FooMacros", isMacro: true)]
     #expect(productLines(packages) == [#".library(name: "Foo", targets: ["Foo"])"#])
+  }
+
+  @Test("An executable target produces an `.executable` product")
+  func executableTargetProducesAnExecutableProduct() {
+    let packages = [lib("tool", isExecutable: true, libraryType: .dynamic), lib("Core")]
+    #expect(productLines(packages) == [
+      #".library(name: "Core", targets: ["Core"])"#,
+      #".executable(name: "tool", targets: ["tool"])"#,
+    ])
   }
 
   @Test("No library targets yields an empty section")

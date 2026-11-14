@@ -15,7 +15,7 @@ func generateExportedFiles(
   
   let packageDir = context.package.directoryURL
   
-  for target in targets where !target.isTest {
+  for target in targets where !target.isTest && !target.isExecutable {
     guard !target.dependencies.isEmpty else { continue }
     
     let exportedFileName = "exported.swift"

@@ -4,6 +4,8 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
   public var name: String
   public var isTest: Bool
   public var isMacro: Bool = false
+  /// An `.executableTarget` with an `.executable` product: set by the plugin from config; not from CLI JSON.
+  public var isExecutable: Bool = false
   public var dependencies: [String]
   public var path: String
   public var fullPath: String
@@ -60,10 +62,11 @@ public struct ParsedPackage: Codable, CustomStringConvertible {
     return "[\(dependencies.count)|\(localDependencies)] \(name) \(hasResources == false ? "" : "/ hasResources")"
   }
   
-  public init(name: String, isTest: Bool, isMacro: Bool = false, dependencies: [String], path: String, fullPath: String, resources: String? = nil, localDependencies: Int = 0, hasBiggestNumberOfDependencies: Bool = false, exclude: [String] = [], parameters: [String]? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil, productName: String? = nil) {
+  public init(name: String, isTest: Bool, isMacro: Bool = false, isExecutable: Bool = false, dependencies: [String], path: String, fullPath: String, resources: String? = nil, localDependencies: Int = 0, hasBiggestNumberOfDependencies: Bool = false, exclude: [String] = [], parameters: [String]? = nil, additionalDependencies: [String]? = nil, libraryType: LibraryType? = nil, productName: String? = nil) {
     self.name = name
     self.isTest = isTest
     self.isMacro = isMacro
+    self.isExecutable = isExecutable
     self.dependencies = dependencies
     self.path = path
     self.fullPath = fullPath

@@ -96,7 +96,7 @@ packageDirectoryTargets:
   - path: Sources/Modules
     targets:
       - name: ModuleA
-        type: regular                          # regular, test, or macro
+        type: regular                          # regular, test, macro, or executable
         path: null                             # override computed path if needed
         exclude: ["__Snapshots__", "Mocks"]   # exclude patterns
         parameters:                            # inline SPM target parameters
@@ -112,7 +112,7 @@ packageDirectoryTargets:
 
 `additionalDependencies` injects strings verbatim into the target's `dependencies:` array, bypassing import analysis. Use it when a target needs a dependency that isn't imported in source (common with macros, plugins, or transitive requirements). Auto-resolved imports are emitted first (sorted), then `additionalDependencies` in declaration order.
 
-`libraryType` sets the product linkage: `automatic` (default) omits `type:` and lets SwiftPM decide, `dynamic` and `static` emit `.library(name:, type: .dynamic/.static, targets:)`. Set it per target to override the top-level `libraryType`. Ignored for `test` and `macro` targets, which produce no product.
+`libraryType` sets the product linkage: `automatic` (default) omits `type:` and lets SwiftPM decide, `dynamic` and `static` emit `.library(name:, type: .dynamic/.static, targets:)`. Set it per target to override the top-level `libraryType`. Ignored for `test` and `macro` targets, which produce no product, and for `executable` targets, which render as `.executableTarget` with an `.executable(name:targets:)` product (named by `productName` when set).
 
 `productName` names the generated product differently from the target it wraps, emitting `.library(name: "<productName>", targets: ["<target>"])`. It takes precedence over a `mappers.targets` entry for the same target.
 
