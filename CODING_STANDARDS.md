@@ -14,8 +14,8 @@ Read during review. The mechanical part is enforced by the `Architecture/` packa
   the shell (config loading, path discovery, running `package-generator-cli`, writing files, `Diagnostics`) touches
   `PackagePlugin`, the file system or a process.
 - **The tests compile the real files.** A `.plugin` target cannot be imported, so `Tests/PackageGeneratorTests/Shared`
-  holds symbolic links to the pure files in `Plugins/PackageGenerator`, never copies. A file that gains a
-  `PackagePlugin` import can no longer be linked there.
+  and `Benchmarks/Benchmarks/GeneratorBenchmarks/Shared` hold symbolic links to the pure files in
+  `Plugins/PackageGenerator`, never copies. A file that gains a `PackagePlugin` import can no longer be linked there.
 - **Swift 6 language mode.** All code compiles under strict concurrency (`swiftLanguageModes: [.v6]`).
 
 ## Behaviour that users rely on

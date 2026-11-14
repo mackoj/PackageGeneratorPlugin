@@ -30,3 +30,9 @@ jobs:
         run: swift test
       - name: Architecture rules
         run: swift test --package-path Architecture
+      - name: Build benchmarks
+        # Built, not run: shared runners are too noisy to compare timings. jemalloc is off so the runner needs no
+        # Homebrew package; run them locally as docs/performance.md describes.
+        env:
+          BENCHMARK_DISABLE_JEMALLOC: "true"
+        run: swift build --package-path Benchmarks
