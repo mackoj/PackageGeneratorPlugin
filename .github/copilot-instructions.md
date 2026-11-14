@@ -4,13 +4,18 @@
 
 A Swift Package Manager **Command Plugin** that auto-generates `Package.swift` for heavily modularized SPM projects. It reads source files, extracts imports via a companion binary (`package-generator-cli`), resolves dependencies, and writes the output.
 
-It is **not a library**. There is no test target. Testing is done via dry-run in consumer projects.
+It is **not a library**. The pure generator files (no `PackagePlugin` import) are unit tested through symbolic links in `Tests/PackageGeneratorTests/Shared`; the rest is tested via dry-run in consumer projects.
+
+Read `CODING_STANDARDS.md` before changing code. Its mechanical rules are enforced by the `Architecture/` package (swift-llm-check) and listed in `docs/architecture-rules.md`.
 
 ## Build & Run
 
 ```bash
-# Build the package (plugin + yaml-converter tool)
-swift build
+# Build the package (plugin + yaml-converter tool) and run the unit tests
+swift build --build-tests && swift test
+
+# Architecture rules (regenerate docs/architecture-rules.md with LLM_CHECK_RECORD=1)
+swift test --package-path Architecture
 
 # Run the plugin in a consumer project
 swift package plugin --allow-writing-to-package-directory package-generator
