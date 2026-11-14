@@ -59,6 +59,7 @@ struct PackageGeneratorV2 {
           name: targetSpec.name,
           isTest: targetSpec.type == .test,
           isMacro: targetSpec.type == .macro,
+          isExecutable: targetSpec.type == .executable,
           dependencies: filtered,
           path: resolvedPath,
           fullPath: context.package.directoryURL.appendingPathComponent(resolvedPath).path,

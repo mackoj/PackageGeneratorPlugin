@@ -22,7 +22,7 @@ func pragmaMarkGroupName(_ path: String, fallback: String) -> String {
   return parts.first.map(String.init) ?? fallback
 }
 
-/// Renders a single target as a `.target()`, `.testTarget()`, or `.macro()` block.
+/// Renders a single target as a `.target()`, `.testTarget()`, `.executableTarget()` or `.macro()` block.
 /// Matches V1's `fakeTargetToSwiftCode` format exactly.
 ///
 /// Resolution priority per import:
@@ -42,7 +42,7 @@ func renderSingleTarget(
   let s2 = String(repeating: " ", count: config.spaces * 2)
   let s3 = String(repeating: " ", count: config.spaces * 3)
 
-  let blockType = target.isMacro ? "macro" : (target.isTest ? "testTarget" : "target")
+  let blockType = target.isMacro ? "macro" : target.isExecutable ? "executableTarget" : (target.isTest ? "testTarget" : "target")
 
   // Build multi-line dependencies section using three-way resolution.
   var depsStr = ""

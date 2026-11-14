@@ -5,7 +5,7 @@ import Foundation
 // Kept free of `PackagePlugin` so the test target can compile this file directly.
 
 /// Generates the products `package.products.append(contentsOf: [...])` section.
-/// Includes all non-test, non-macro targets sorted alphabetically.
+/// Includes all non-test, non-macro targets sorted alphabetically: `.executable` for an executable target, `.library` for the rest.
 func generateProductsSection(
   parsedPackages: [ParsedPackage],
   config: ConfigurationV2
@@ -21,6 +21,10 @@ func generateProductsSection(
     // The product may be named differently from the target it wraps; `targets:` must
     // always reference the real target name.
     let productName = lib.productName ?? config.mappers.targets[lib.path, default: lib.name]
+    if lib.isExecutable {
+      lines.append("\(s1).executable(name: \"\(productName)\", targets: [\"\(lib.name)\"])")
+      continue
+    }
     let type = (lib.libraryType ?? config.libraryType).productArgument.map { "\($0), " } ?? ""
     lines.append("\(s1).library(name: \"\(productName)\", \(type)targets: [\"\(lib.name)\"])")
   }

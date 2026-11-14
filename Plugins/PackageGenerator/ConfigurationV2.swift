@@ -116,10 +116,11 @@ struct ConfigurationV2: Codable {
       case regular
       case test
       case macro
+      case executable
 
       var defaultFolder: String {
         switch self {
-        case .regular, .macro: return "Sources"
+        case .regular, .macro, .executable: return "Sources"
         case .test: return "Tests"
         }
       }
