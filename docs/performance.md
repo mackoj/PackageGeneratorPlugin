@@ -73,7 +73,7 @@ Rendering a 1,000-target `Package.swift`, before → after (Apple silicon, relea
 | Dependency graph, 1,000 targets | 1,213 → 834 (0.69x) | 5,003 → 29 (0.01x) |
 | Decode config, Filter imports, Render products | unchanged (code untouched; ±15 % run-to-run noise) | unchanged |
 
-Released in 1.0.6. The rendered text is byte for byte the same (checked with `cmp` on the 1.1 MB synthetic output, and
+The rendered text is byte for byte the same (checked with `cmp` on the 1.1 MB synthetic output, and
 end to end by running the plugin on a sample package from `main` and from the change).
 
 - **Compute a sort key once, not in the comparator.** `generateTargetsSection` sorted the targets by pragma-mark group
