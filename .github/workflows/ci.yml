@@ -16,7 +16,8 @@ jobs:
   macos:
     name: macOS
     # package-generator-cli ships as an arm64 macOS binary, so the plugin builds on Apple silicon only.
-    runs-on: macos-15
+    # Package.swift needs tools 6.2 (Xcode 26), the default on macos-26.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
         with:
